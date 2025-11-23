@@ -1,0 +1,18 @@
+# Node / general
+node_modules/
+.env
+*.log
+.vscode/
+.DS_Store
+
+# Expo / React Native
+frontend/.expo
+frontend/node_modules
+frontend/.env
+frontend/android
+frontend/ios
+frontend/.expo-shared
+
+# Backend
+backend/node_modules
+backend/.env
