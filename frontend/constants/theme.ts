@@ -1,14 +1,29 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * CrickMate Color Palette
+ * Dark theme with sport green and neon accents
  */
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const tintColorLight = '#2E7D32';
+const tintColorDark = '#00E676';
 
 export const Colors = {
+  // Main Colors
+  darkBackground: '#121212',
+  darkSecondary: '#1F1F1F',
+  sportGreen: '#2E7D32',
+  neonGreen: '#00E676',
+  neonYellow: '#FFEA00',
+  white: '#FFFFFF',
+  
+  // Additional UI Colors
+  textPrimary: '#FFFFFF',
+  textSecondary: '#B0B0B0',
+  error: '#FF5252',
+  success: '#00E676',
+  warning: '#FFEA00',
+  
   light: {
     text: '#11181C',
     background: '#fff',
@@ -19,11 +34,15 @@ export const Colors = {
   },
   dark: {
     text: '#ECEDEE',
-    background: '#151718',
+    background: '#121212',
+    secondary: '#1F1F1F',
     tint: tintColorDark,
     icon: '#9BA1A6',
     tabIconDefault: '#9BA1A6',
     tabIconSelected: tintColorDark,
+    sportGreen: '#2E7D32',
+    neonGreen: '#00E676',
+    accent: '#FFEA00',
   },
 };
 
