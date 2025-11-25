@@ -1,48 +1,54 @@
 /**
- * CrickMate Color Palette
- * Dark theme with sport green and neon accents
+ * CrickMate Color Palette - Coffee Shop Inspired
+ * Warm orange tones with green accents
  */
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#2E7D32';
-const tintColorDark = '#00E676';
+const primaryOrange = '#E65100';
+const sportOrange = '#FF9800';
+const softOrange = '#FFE0B2';
+const accentGreen = '#1B5E20';
+const white = '#FFFFFF';
 
 export const Colors = {
   // Main Colors
-  darkBackground: '#121212',
-  darkSecondary: '#1F1F1F',
-  sportGreen: '#2E7D32',
-  neonGreen: '#00E676',
-  neonYellow: '#FFEA00',
-  white: '#FFFFFF',
+  primary: primaryOrange,
+  secondary: sportOrange,
+  tertiary: softOrange,
+  accent: accentGreen,
+  white: white,
   
   // Additional UI Colors
-  textPrimary: '#FFFFFF',
-  textSecondary: '#B0B0B0',
-  error: '#FF5252',
-  success: '#00E676',
-  warning: '#FFEA00',
+  background: '#FFFFFF',
+  cardBackground: '#FFF3E0',
+  textPrimary: '#212121',
+  textSecondary: '#757575',
+  textLight: '#BDBDBD',
+  border: '#E0E0E0',
+  error: '#D32F2F',
+  success: accentGreen,
+  warning: sportOrange,
   
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    text: '#212121',
+    background: '#FFFFFF',
+    card: '#FFF3E0',
+    tint: primaryOrange,
+    icon: '#757575',
+    tabIconDefault: '#BDBDBD',
+    tabIconSelected: primaryOrange,
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#121212',
-    secondary: '#1F1F1F',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
-    sportGreen: '#2E7D32',
-    neonGreen: '#00E676',
-    accent: '#FFEA00',
+    text: '#FFFFFF',
+    background: '#1A1A1A',
+    secondary: '#2A2A2A',
+    card: '#2A2A2A',
+    tint: sportOrange,
+    icon: '#BDBDBD',
+    tabIconDefault: '#757575',
+    tabIconSelected: sportOrange,
+    accent: accentGreen,
   },
 };
 

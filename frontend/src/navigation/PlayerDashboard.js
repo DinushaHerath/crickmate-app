@@ -1,8 +1,9 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/theme';
-import PlayerHomeScreen from '../screens/PlayerHomeScreen';
-import MatchesScreen from '../screens/MatchesScreen';
+import HomeStack from './HomeStack';
+import MatchesStack from './MatchesStack';
 import GroundsScreen from '../screens/GroundsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ChatScreen from '../screens/ChatScreen';
@@ -15,51 +16,63 @@ export default function PlayerDashboard() {
       screenOptions={{
         headerShown: true,
         headerStyle: {
-          backgroundColor: Colors.darkBackground,
+          backgroundColor: Colors.white,
         },
-        headerTintColor: Colors.neonGreen,
+        headerTintColor: Colors.primary,
         tabBarStyle: {
-          backgroundColor: Colors.darkSecondary,
-          borderTopColor: Colors.sportGreen,
+          backgroundColor: Colors.white,
+          borderTopColor: Colors.border,
           borderTopWidth: 1,
         },
-        tabBarActiveTintColor: Colors.neonGreen,
-        tabBarInactiveTintColor: Colors.textSecondary,
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.textLight,
       }}
     >
       <Tab.Screen 
         name="Home" 
-        component={PlayerHomeScreen}
+        component={HomeStack}
         options={{
-          tabBarIcon: ({ color }) => <span style={{ fontSize: 24 }}>🏠</span>,
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen 
         name="Matches" 
-        component={MatchesScreen}
+        component={MatchesStack}
         options={{
-          tabBarIcon: ({ color }) => <span style={{ fontSize: 24 }}>⚡</span>,
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="flash" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen 
         name="Grounds" 
         component={GroundsScreen}
         options={{
-          tabBarIcon: ({ color }) => <span style={{ fontSize: 24 }}>🏟️</span>,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="location" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen 
         name="Chat" 
         component={ChatScreen}
         options={{
-          tabBarIcon: ({ color }) => <span style={{ fontSize: 24 }}>💬</span>,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubbles" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen 
         name="Profile" 
         component={ProfileScreen}
         options={{
-          tabBarIcon: ({ color }) => <span style={{ fontSize: 24 }}>👤</span>,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person" size={size} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>

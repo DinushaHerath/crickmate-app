@@ -76,7 +76,7 @@ export default function RegisterScreen({ navigation }) {
       const response = await register(payload);
       dispatch(setCredentials(response.data));
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.msg || 'Registration failed');
+      Alert.alert('Error', error.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -227,7 +227,7 @@ export default function RegisterScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.darkBackground,
+    backgroundColor: Colors.white,
   },
   scrollContent: {
     padding: 20,
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 30,
     textAlign: 'center',
-    color: Colors.neonGreen,
+    color: Colors.primary,
   },
   section: {
     marginBottom: 20,
@@ -246,18 +246,18 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: Colors.white,
+    color: Colors.textPrimary,
     marginBottom: 15,
   },
   roleButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.darkSecondary,
+    backgroundColor: Colors.cardBackground,
     padding: 20,
     borderRadius: 12,
     marginBottom: 15,
     borderWidth: 2,
-    borderColor: Colors.sportGreen,
+    borderColor: Colors.secondary,
   },
   roleIcon: {
     fontSize: 32,
@@ -266,20 +266,20 @@ const styles = StyleSheet.create({
   roleText: {
     fontSize: 18,
     fontWeight: '600',
-    color: Colors.white,
+    color: Colors.textPrimary,
   },
   changeRole: {
     marginBottom: 20,
   },
   changeRoleText: {
-    color: Colors.neonGreen,
+    color: Colors.primary,
     fontSize: 14,
   },
   input: {
     borderWidth: 1,
-    borderColor: Colors.sportGreen,
-    backgroundColor: Colors.darkSecondary,
-    color: Colors.white,
+    borderColor: Colors.border,
+    backgroundColor: Colors.white,
+    color: Colors.textPrimary,
     padding: 15,
     marginBottom: 15,
     borderRadius: 8,
@@ -291,16 +291,16 @@ const styles = StyleSheet.create({
   checkbox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.darkSecondary,
+    backgroundColor: Colors.cardBackground,
     padding: 12,
     borderRadius: 8,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: Colors.sportGreen + '40',
+    borderColor: Colors.border,
   },
   checkboxSelected: {
-    backgroundColor: Colors.sportGreen + '40',
-    borderColor: Colors.neonGreen,
+    backgroundColor: Colors.softOrange,
+    borderColor: Colors.primary,
   },
   checkboxIcon: {
     fontSize: 20,
@@ -311,23 +311,23 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   checkboxTextSelected: {
-    color: Colors.neonGreen,
+    color: Colors.primary,
     fontWeight: 'bold',
   },
   button: {
-    backgroundColor: Colors.neonGreen,
+    backgroundColor: Colors.accent,
     padding: 15,
     borderRadius: 8,
     marginTop: 10,
   },
   buttonText: {
-    color: Colors.darkBackground,
+    color: Colors.white,
     textAlign: 'center',
     fontSize: 16,
     fontWeight: 'bold',
   },
   link: {
-    color: Colors.neonGreen,
+    color: Colors.primary,
     textAlign: 'center',
     marginTop: 15,
     fontSize: 14,

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, Image } from 'react-native';
 import { useDispatch } from 'react-redux';
+import { Ionicons } from '@expo/vector-icons';
 import { setCredentials } from '../store/slices/authSlice';
 import { login } from '../api/auth';
 import { Colors } from '../../constants/theme';
@@ -23,7 +24,7 @@ export default function LoginScreen({ navigation }) {
       const response = await login({ email, password, role });
       dispatch(setCredentials(response.data));
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.msg || 'Login failed');
+      Alert.alert('Error', error.message || 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -32,7 +33,11 @@ export default function LoginScreen({ navigation }) {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <View style={styles.header}>
-        <Text style={styles.logo}>🏏</Text>
+        <Image 
+          source={require('../../assets/images/crickmate.png')} 
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <Text style={styles.title}>Welcome Back</Text>
         <Text style={styles.subtitle}>Sign in to continue</Text>
       </View>
@@ -48,7 +53,12 @@ export default function LoginScreen({ navigation }) {
             ]}
             onPress={() => setRole('player')}
           >
-            <Text style={styles.roleIcon}>👤</Text>
+            <Ionicons 
+              name="person" 
+              size={32} 
+              color={role === 'player' ? Colors.primary : Colors.textSecondary} 
+              style={styles.roleIcon} 
+            />
             <Text style={[
               styles.roleText,
               role === 'player' && styles.roleTextSelected
@@ -64,7 +74,12 @@ export default function LoginScreen({ navigation }) {
             ]}
             onPress={() => setRole('ground_owner')}
           >
-            <Text style={styles.roleIcon}>🏟️</Text>
+            <Ionicons 
+              name="business" 
+              size={32} 
+              color={role === 'ground_owner' ? Colors.primary : Colors.textSecondary} 
+              style={styles.roleIcon} 
+            />
             <Text style={[
               styles.roleText,
               role === 'ground_owner' && styles.roleTextSelected
@@ -116,7 +131,7 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.darkBackground,
+    backgroundColor: Colors.white,
   },
   scrollContent: {
     flexGrow: 1,
@@ -128,13 +143,14 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logo: {
-    fontSize: 60,
-    marginBottom: 10,
+    width: 100,
+    height: 100,
+    marginBottom: 15,
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: Colors.neonGreen,
+    color: Colors.primary,
     marginBottom: 5,
   },
   subtitle: {
@@ -147,7 +163,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.white,
+    color: Colors.textPrimary,
     marginBottom: 15,
   },
   roleContainer: {
@@ -156,19 +172,18 @@ const styles = StyleSheet.create({
   },
   roleCard: {
     flex: 1,
-    backgroundColor: Colors.darkSecondary,
+    backgroundColor: Colors.cardBackground,
     padding: 20,
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: Colors.sportGreen + '40',
+    borderColor: Colors.border,
   },
   roleCardSelected: {
-    backgroundColor: Colors.sportGreen + '40',
-    borderColor: Colors.neonGreen,
+    backgroundColor: Colors.softOrange,
+    borderColor: Colors.primary,
   },
   roleIcon: {
-    fontSize: 32,
     marginBottom: 8,
   },
   roleText: {
@@ -177,38 +192,38 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   roleTextSelected: {
-    color: Colors.neonGreen,
+    color: Colors.primary,
   },
   form: {
     marginBottom: 20,
   },
   input: {
     borderWidth: 1,
-    borderColor: Colors.sportGreen,
-    backgroundColor: Colors.darkSecondary,
-    color: Colors.white,
+    borderColor: Colors.border,
+    backgroundColor: Colors.white,
+    color: Colors.textPrimary,
     padding: 15,
     marginBottom: 15,
     borderRadius: 8,
     fontSize: 16,
   },
   button: {
-    backgroundColor: Colors.neonGreen,
+    backgroundColor: Colors.accent,
     padding: 15,
     borderRadius: 8,
     marginTop: 10,
   },
   buttonDisabled: {
-    backgroundColor: Colors.sportGreen + '60',
+    backgroundColor: Colors.textLight,
   },
   buttonText: {
-    color: Colors.darkBackground,
+    color: Colors.white,
     textAlign: 'center',
     fontSize: 16,
     fontWeight: 'bold',
   },
   link: {
-    color: Colors.neonGreen,
+    color: Colors.primary,
     textAlign: 'center',
     marginTop: 15,
     fontSize: 14,

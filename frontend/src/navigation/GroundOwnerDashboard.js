@@ -1,4 +1,5 @@
 import React from 'react';
+import { Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Colors } from '../../constants/theme';
 import GroundOwnerHomeScreen from '../screens/GroundOwnerHomeScreen';
@@ -13,37 +14,37 @@ export default function GroundOwnerDashboard() {
       screenOptions={{
         headerShown: true,
         headerStyle: {
-          backgroundColor: Colors.darkBackground,
+          backgroundColor: Colors.white,
         },
-        headerTintColor: Colors.neonGreen,
+        headerTintColor: Colors.primary,
         tabBarStyle: {
-          backgroundColor: Colors.darkSecondary,
-          borderTopColor: Colors.sportGreen,
+          backgroundColor: Colors.white,
+          borderTopColor: Colors.border,
           borderTopWidth: 1,
         },
-        tabBarActiveTintColor: Colors.neonGreen,
-        tabBarInactiveTintColor: Colors.textSecondary,
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.textLight,
       }}
     >
       <Tab.Screen 
         name="Dashboard" 
         component={GroundOwnerHomeScreen}
         options={{
-          tabBarIcon: ({ color }) => <span style={{ fontSize: 24 }}>🏠</span>,
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>🏠</Text>,
         }}
       />
       <Tab.Screen 
         name="Bookings" 
         component={BookingsScreen}
         options={{
-          tabBarIcon: ({ color }) => <span style={{ fontSize: 24 }}>📅</span>,
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>📅</Text>,
         }}
       />
       <Tab.Screen 
         name="Profile" 
         component={ProfileScreen}
         options={{
-          tabBarIcon: ({ color }) => <span style={{ fontSize: 24 }}>👤</span>,
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>👤</Text>,
         }}
       />
     </Tab.Navigator>

@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/theme';
 
 const { width, height } = Dimensions.get('window');
@@ -9,12 +10,17 @@ export default function LandingScreen({ navigation }) {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <LinearGradient
-        colors={[Colors.darkBackground, Colors.darkSecondary, Colors.sportGreen]}
+        colors={['#FFFFFF', '#FFE0B2', '#FF9800']}
         style={styles.gradient}
       >
         {/* Header Section */}
         <View style={styles.header}>
-          <Text style={styles.logo}>🏏 CrickMate</Text>
+          <Image 
+            source={require('../../assets/images/crickmate.png')} 
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={styles.appName}>CrickMate</Text>
           <Text style={styles.tagline}>Your Ultimate Cricket Companion</Text>
         </View>
 
@@ -23,31 +29,31 @@ export default function LandingScreen({ navigation }) {
           <Text style={styles.sectionTitle}>Features</Text>
           
           <View style={styles.featureCard}>
-            <Text style={styles.featureIcon}>👥</Text>
+            <Ionicons name="people" size={40} color={Colors.primary} style={styles.featureIcon} />
             <Text style={styles.featureTitle}>Build Your Team</Text>
             <Text style={styles.featureDesc}>Create and manage cricket teams with players</Text>
           </View>
 
           <View style={styles.featureCard}>
-            <Text style={styles.featureIcon}>🏟️</Text>
+            <Ionicons name="location" size={40} color={Colors.primary} style={styles.featureIcon} />
             <Text style={styles.featureTitle}>Find Grounds</Text>
             <Text style={styles.featureDesc}>Discover and book cricket grounds near you</Text>
           </View>
 
           <View style={styles.featureCard}>
-            <Text style={styles.featureIcon}>📅</Text>
+            <Ionicons name="calendar" size={40} color={Colors.primary} style={styles.featureIcon} />
             <Text style={styles.featureTitle}>Schedule Matches</Text>
             <Text style={styles.featureDesc}>Organize matches and track upcoming games</Text>
           </View>
 
           <View style={styles.featureCard}>
-            <Text style={styles.featureIcon}>💬</Text>
+            <Ionicons name="chatbubbles" size={40} color={Colors.primary} style={styles.featureIcon} />
             <Text style={styles.featureTitle}>Team Chat</Text>
             <Text style={styles.featureDesc}>Real-time communication with teammates</Text>
           </View>
 
           <View style={styles.featureCard}>
-            <Text style={styles.featureIcon}>📊</Text>
+            <Ionicons name="stats-chart" size={40} color={Colors.primary} style={styles.featureIcon} />
             <Text style={styles.featureTitle}>Track Statistics</Text>
             <Text style={styles.featureDesc}>Monitor your performance and match history</Text>
           </View>
@@ -82,7 +88,7 @@ export default function LandingScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.darkBackground,
+    backgroundColor: Colors.background,
   },
   contentContainer: {
     flexGrow: 1,
@@ -97,10 +103,15 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   logo: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: Colors.neonGreen,
+    width: 120,
+    height: 120,
     marginBottom: 10,
+  },
+  appName: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: Colors.primary,
+    marginBottom: 5,
   },
   tagline: {
     fontSize: 18,
@@ -114,26 +125,30 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: Colors.white,
+    color: Colors.textPrimary,
     marginBottom: 20,
     textAlign: 'center',
   },
   featureCard: {
-    backgroundColor: Colors.darkSecondary,
+    backgroundColor: Colors.white,
     borderRadius: 15,
     padding: 20,
     marginBottom: 15,
     borderWidth: 1,
-    borderColor: Colors.sportGreen + '40',
+    borderColor: Colors.secondary + '40',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   featureIcon: {
-    fontSize: 40,
     marginBottom: 10,
   },
   featureTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: Colors.neonGreen,
+    color: Colors.primary,
     marginBottom: 8,
   },
   featureDesc: {
@@ -152,20 +167,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButton: {
-    backgroundColor: Colors.neonGreen,
+    backgroundColor: Colors.accent,
   },
   secondaryButton: {
     backgroundColor: 'transparent',
     borderWidth: 2,
-    borderColor: Colors.neonGreen,
+    borderColor: Colors.accent,
   },
   buttonText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: Colors.darkBackground,
+    color: Colors.white,
   },
   secondaryButtonText: {
-    color: Colors.neonGreen,
+    color: Colors.accent,
   },
   footer: {
     paddingVertical: 20,
