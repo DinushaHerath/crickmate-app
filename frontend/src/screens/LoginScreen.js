@@ -19,20 +19,28 @@ export default function LoginScreen({ navigation }) {
       return;
     }
 
-    try {
-      setLoading(true);
-      const response = await login({ email, password, role });
-      dispatch(setCredentials(response.data));
-    } catch (error) {
-      Alert.alert('Error', error.message || 'Login failed');
-    } finally {
-      setLoading(false);
+    // For now, skip backend and navigate directly based on role
+    if (role === 'player') {
+      dispatch(setCredentials({ user: { role: 'player', email, name: 'Player' }, token: 'mock-token' }));
+    } else if (role === 'ground_owner') {
+      dispatch(setCredentials({ user: { role: 'ground_owner', email, name: 'Ground Owner' }, token: 'mock-token' }));
     }
+
+    // Uncomment when backend is ready:
+    // try {
+    //   setLoading(true);
+    //   const response = await login({ email, password, role });
+    //   dispatch(setCredentials(response.data));
+    // } catch (error) {
+    //   Alert.alert('Error', error.message || 'Login failed');
+    // } finally {
+    //   setLoading(false);
+    // }
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      <View style={styles.header}>
+      <View style={styles.logoContainer}>
         <Image 
           source={require('../../assets/images/crickmate.png')} 
           style={styles.logo}
@@ -138,7 +146,7 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 60,
   },
-  header: {
+  logoContainer: {
     alignItems: 'center',
     marginBottom: 40,
   },
@@ -152,10 +160,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.primary,
     marginBottom: 5,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
     color: Colors.textSecondary,
+    textAlign: 'center',
   },
   section: {
     marginBottom: 30,

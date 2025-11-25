@@ -99,8 +99,7 @@ export default function PlayerHomeScreen({ navigation }) {
         {MOCK_TEAMS.slice(0, 2).map((team) => (
           <TouchableOpacity key={team.id} style={styles.teamCard}>
             <View style={styles.teamHeader}>
-              <View>
-                <Text style={styles.teamEmoji}>{team.logo}</Text>
+              <View style={styles.teamInfoSection}>
                 <Text style={styles.teamName}>{team.name}</Text>
                 <Text style={styles.teamRole}>Captain: {team.captain}</Text>
               </View>
@@ -131,7 +130,7 @@ export default function PlayerHomeScreen({ navigation }) {
         <View style={styles.teamActions}>
           <TouchableOpacity 
             style={styles.createTeamButton}
-            onPress={() => navigation.navigate('FindPlayers')}
+            onPress={() => navigation.navigate('CreateTeam')}
           >
             <Ionicons name="add-circle-outline" size={20} color={Colors.white} />
             <Text style={styles.createTeamText}>Create New Team</Text>
@@ -328,9 +327,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 15,
   },
-  teamEmoji: {
-    fontSize: 32,
-    marginBottom: 5,
+  teamInfoSection: {
+    flex: 1,
   },
   teamRole: {
     fontSize: 12,

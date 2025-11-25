@@ -8,6 +8,7 @@ import FindPlayersScreen from '../screens/team/FindPlayersScreen';
 import PlayerProfileScreen from '../screens/team/PlayerProfileScreen';
 import FindTeamsScreen from '../screens/team/FindTeamsScreen';
 import TeamInvitationsScreen from '../screens/team/TeamInvitationsScreen';
+import CreateTeamScreen from '../screens/team/CreateTeamScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -37,6 +38,11 @@ export default function HomeStack() {
         name="PlayerHome" 
         component={PlayerHomeScreen}
         options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="CreateTeam" 
+        component={CreateTeamScreen}
+        options={{ title: 'Create New Team' }}
       />
       <Stack.Screen 
         name="FindPlayers" 
