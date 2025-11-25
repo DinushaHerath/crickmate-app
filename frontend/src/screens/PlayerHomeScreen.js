@@ -287,7 +287,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.textPrimary,
     flex: 1,
-    textAlign: 'center',
   },
   vs: {
     fontSize: 14,
