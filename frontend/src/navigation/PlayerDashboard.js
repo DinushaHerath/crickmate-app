@@ -5,8 +5,8 @@ import { Colors } from '../../constants/theme';
 import HomeStack from './HomeStack';
 import MatchesStack from './MatchesStack';
 import GroundsScreen from '../screens/GroundsScreen';
-import ProfileScreen from '../screens/ProfileScreen';
-import ChatScreen from '../screens/ChatScreen';
+import TeamScreen from '../screens/TeamScreen';
+import ProfileScreen from '../screens/ProfileScreenNew';
 
 const Tab = createBottomTabNavigator();
 
@@ -58,11 +58,11 @@ export default function PlayerDashboard() {
         }}
       />
       <Tab.Screen 
-        name="Chat" 
-        component={ChatScreen}
+        name="Team" 
+        component={TeamScreen}
         options={{
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubbles" size={size} color={color} />
+            <Ionicons name="people" size={size} color={color} />
           ),
         }}
       />

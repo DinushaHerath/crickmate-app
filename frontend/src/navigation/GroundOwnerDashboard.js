@@ -1,10 +1,11 @@
 import React from 'react';
-import { Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/theme';
-import GroundOwnerHomeScreen from '../screens/GroundOwnerHomeScreen';
-import BookingsScreen from '../screens/BookingsScreen';
-import ProfileScreen from '../screens/ProfileScreen';
+import GroundOwnerHomeScreen from '../screens/groundowner/GroundOwnerHomeScreen';
+import CalendarScreen from '../screens/groundowner/CalendarScreen';
+import BookingsScreen from '../screens/groundowner/BookingsScreen';
+import PriceScreen from '../screens/groundowner/PriceScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -27,24 +28,39 @@ export default function GroundOwnerDashboard() {
       }}
     >
       <Tab.Screen 
-        name="Dashboard" 
+        name="Home" 
         component={GroundOwnerHomeScreen}
         options={{
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>🏠</Text>,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Calendar" 
+        component={CalendarScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="calendar" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen 
         name="Bookings" 
         component={BookingsScreen}
         options={{
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>📅</Text>,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="list" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen 
-        name="Profile" 
-        component={ProfileScreen}
+        name="Price" 
+        component={PriceScreen}
         options={{
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>👤</Text>,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="cash" size={size} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>

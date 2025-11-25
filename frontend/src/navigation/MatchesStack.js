@@ -1,4 +1,5 @@
 import React from 'react';
+import { View } from 'react-native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { Colors } from '../../constants/theme';
 import UpcomingMatchesScreen from '../screens/matches/UpcomingMatchesScreen';
@@ -9,28 +10,32 @@ const Tab = createMaterialTopTabNavigator();
 
 export default function MatchesStack() {
   return (
-    <Tab.Navigator
-      screenOptions={{
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textSecondary,
-        tabBarIndicatorStyle: {
-          backgroundColor: Colors.primary,
-          height: 3,
-        },
-        tabBarLabelStyle: {
-          fontSize: 14,
-          fontWeight: '600',
-          textTransform: 'none',
-        },
-        tabBarStyle: {
-          backgroundColor: Colors.white,
-          elevation: 0,
-          shadowOpacity: 0,
-          borderBottomWidth: 1,
-          borderBottomColor: Colors.border,
-        },
-      }}
-    >
+    <View style={{ flex: 1, paddingTop: 0 }}>
+      <Tab.Navigator
+        screenOptions={{
+          tabBarActiveTintColor: Colors.primary,
+          tabBarInactiveTintColor: Colors.textSecondary,
+          tabBarIndicatorStyle: {
+            backgroundColor: Colors.primary,
+            height: 3,
+          },
+          tabBarLabelStyle: {
+            fontSize: 14,
+            fontWeight: '600',
+            textTransform: 'none',
+          },
+          tabBarStyle: {
+            backgroundColor: Colors.white,
+            elevation: 4,
+            shadowOpacity: 0.1,
+            shadowOffset: { width: 0, height: 2 },
+            shadowRadius: 4,
+          },
+          tabBarItemStyle: {
+            paddingVertical: 12,
+          },
+        }}
+      >
       <Tab.Screen 
         name="Upcoming" 
         component={UpcomingMatchesScreen}
@@ -47,5 +52,6 @@ export default function MatchesStack() {
         options={{ title: 'Available' }}
       />
     </Tab.Navigator>
+    </View>
   );
 }

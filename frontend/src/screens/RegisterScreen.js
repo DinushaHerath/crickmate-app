@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useDispatch } from 'react-redux';
 import { setCredentials } from '../store/slices/authSlice';
 import { register } from '../api/auth';
 import { Colors } from '../../constants/theme';
 
 const PLAYER_ROLES = [
-  { label: 'Batsman', value: 'batsman', icon: '🏏' },
-  { label: 'Bowler', value: 'bowler', icon: '⚡' },
-  { label: 'All-Rounder', value: 'all_rounder', icon: '⭐' },
-  { label: 'Wicket-keeper', value: 'wicket_keeper', icon: '🧤' },
-  { label: 'Fielder', value: 'fielder', icon: '🎯' }
+  { label: 'Batsman', value: 'batsman', icon: 'baseball' },
+  { label: 'Bowler', value: 'bowler', icon: 'flash' },
+  { label: 'All-Rounder', value: 'all_rounder', icon: 'star' },
+  { label: 'Wicket-keeper', value: 'wicket_keeper', icon: 'hand-left' },
+  { label: 'Fielder', value: 'fielder', icon: 'location' }
 ];
 
 export default function RegisterScreen({ navigation }) {
@@ -84,7 +85,14 @@ export default function RegisterScreen({ navigation }) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      <Text style={styles.title}>Create Account</Text>
+      <View style={styles.logoContainer}>
+        <Image 
+          source={require('../../assets/images/crickmate.png')} 
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.title}>Create Account</Text>
+      </View>
 
       {/* Role Selection */}
       {!role && (
@@ -94,15 +102,17 @@ export default function RegisterScreen({ navigation }) {
             style={styles.roleButton}
             onPress={() => setRole('player')}
           >
-            <Text style={styles.roleIcon}>👤</Text>
+            <Ionicons name="person" size={32} color={Colors.primary} style={styles.roleIconStyle} />
             <Text style={styles.roleText}>Player</Text>
+            <Ionicons name="chevron-forward" size={24} color={Colors.textLight} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.roleButton}
             onPress={() => setRole('ground_owner')}
           >
-            <Text style={styles.roleIcon}>🏟️</Text>
+            <Ionicons name="business" size={32} color={Colors.primary} style={styles.roleIconStyle} />
             <Text style={styles.roleText}>Ground Owner</Text>
+            <Ionicons name="chevron-forward" size={24} color={Colors.textLight} />
           </TouchableOpacity>
         </View>
       )}
@@ -113,34 +123,46 @@ export default function RegisterScreen({ navigation }) {
             style={styles.changeRole}
             onPress={() => setRole('')}
           >
-            <Text style={styles.changeRoleText}>← Change Role</Text>
+            <Ionicons name="arrow-back" size={20} color={Colors.primary} />
+            <Text style={styles.changeRoleText}>Change Role</Text>
           </TouchableOpacity>
 
           {/* Common Fields */}
-          <TextInput
-            style={styles.input}
-            placeholder="Name *"
-            placeholderTextColor={Colors.textSecondary}
-            value={name}
-            onChangeText={setName}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Email *"
-            placeholderTextColor={Colors.textSecondary}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Password *"
-            placeholderTextColor={Colors.textSecondary}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+          <View style={styles.inputWrapper}>
+            <Ionicons name="person-outline" size={20} color={Colors.textSecondary} style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Full Name"
+              placeholderTextColor={Colors.textLight}
+              value={name}
+              onChangeText={setName}
+            />
+          </View>
+
+          <View style={styles.inputWrapper}>
+            <Ionicons name="mail-outline" size={20} color={Colors.textSecondary} style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Email Address"
+              placeholderTextColor={Colors.textLight}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
+
+          <View style={styles.inputWrapper}>
+            <Ionicons name="lock-closed-outline" size={20} color={Colors.textSecondary} style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor={Colors.textLight}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+          </View>
 
           {/* Player-specific fields */}
           {role === 'player' && (
@@ -156,52 +178,73 @@ export default function RegisterScreen({ navigation }) {
                     ]}
                     onPress={() => togglePlayerRole(playerRole.value)}
                   >
-                    <Text style={styles.checkboxIcon}>{playerRole.icon}</Text>
+                    <Ionicons 
+                      name={playerRole.icon} 
+                      size={24} 
+                      color={selectedPlayerRoles.includes(playerRole.value) ? Colors.primary : Colors.textSecondary} 
+                    />
                     <Text style={[
                       styles.checkboxText,
                       selectedPlayerRoles.includes(playerRole.value) && styles.checkboxTextSelected
                     ]}>
                       {playerRole.label}
                     </Text>
+                    {selectedPlayerRoles.includes(playerRole.value) && (
+                      <Ionicons name="checkmark-circle" size={20} color={Colors.accent} style={styles.checkmark} />
+                    )}
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <TextInput
-                style={styles.input}
-                placeholder="District"
-                placeholderTextColor={Colors.textSecondary}
-                value={district}
-                onChangeText={setDistrict}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Village"
-                placeholderTextColor={Colors.textSecondary}
-                value={village}
-                onChangeText={setVillage}
-              />
+              <View style={styles.inputWrapper}>
+                <Ionicons name="location-outline" size={20} color={Colors.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="District"
+                  placeholderTextColor={Colors.textLight}
+                  value={district}
+                  onChangeText={setDistrict}
+                />
+              </View>
+
+              <View style={styles.inputWrapper}>
+                <Ionicons name="map-outline" size={20} color={Colors.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Village"
+                  placeholderTextColor={Colors.textLight}
+                  value={village}
+                  onChangeText={setVillage}
+                />
+              </View>
             </>
           )}
 
           {/* Ground Owner-specific fields */}
           {role === 'ground_owner' && (
             <>
-              <TextInput
-                style={styles.input}
-                placeholder="Ground Name *"
-                placeholderTextColor={Colors.textSecondary}
-                value={groundName}
-                onChangeText={setGroundName}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Ground Address *"
-                placeholderTextColor={Colors.textSecondary}
-                value={groundAddress}
-                onChangeText={setGroundAddress}
-                multiline
-              />
+              <View style={styles.inputWrapper}>
+                <Ionicons name="business-outline" size={20} color={Colors.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ground Name"
+                  placeholderTextColor={Colors.textLight}
+                  value={groundName}
+                  onChangeText={setGroundName}
+                />
+              </View>
+
+              <View style={styles.inputWrapper}>
+                <Ionicons name="location-outline" size={20} color={Colors.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ground Address"
+                  placeholderTextColor={Colors.textLight}
+                  value={groundAddress}
+                  onChangeText={setGroundAddress}
+                  multiline
+                />
+              </View>
             </>
           )}
 
@@ -211,14 +254,14 @@ export default function RegisterScreen({ navigation }) {
             disabled={loading}
           >
             <Text style={styles.buttonText}>
-              {loading ? 'Creating Account...' : 'Register'}
+              {loading ? 'Creating Account...' : 'Create Account'}
             </Text>
           </TouchableOpacity>
         </>
       )}
 
       <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-        <Text style={styles.link}>Already have an account? Login</Text>
+        <Text style={styles.link}>Already have an account? Sign In</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -227,62 +270,82 @@ export default function RegisterScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.background,
   },
   scrollContent: {
     padding: 20,
-    paddingTop: 60,
+    paddingTop: 40,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  logo: {
+    width: 100,
+    height: 100,
+    marginBottom: 15,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 30,
-    textAlign: 'center',
     color: Colors.primary,
   },
   section: {
     marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
     color: Colors.textPrimary,
     marginBottom: 15,
   },
   roleButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.cardBackground,
-    padding: 20,
+    backgroundColor: Colors.white,
+    padding: 18,
     borderRadius: 12,
-    marginBottom: 15,
-    borderWidth: 2,
-    borderColor: Colors.secondary,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  roleIcon: {
-    fontSize: 32,
+  roleIconStyle: {
     marginRight: 15,
   },
   roleText: {
+    flex: 1,
     fontSize: 18,
     fontWeight: '600',
     color: Colors.textPrimary,
   },
   changeRole: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 20,
+    gap: 8,
   },
   changeRoleText: {
     color: Colors.primary,
     fontSize: 14,
+    fontWeight: '500',
   },
-  input: {
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.white,
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: Colors.white,
-    color: Colors.textPrimary,
-    padding: 15,
-    marginBottom: 15,
     borderRadius: 8,
+    paddingHorizontal: 15,
+    marginBottom: 12,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    color: Colors.textPrimary,
+    paddingVertical: 14,
     fontSize: 16,
   },
   checkboxContainer: {
@@ -291,32 +354,34 @@ const styles = StyleSheet.create({
   checkbox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.cardBackground,
-    padding: 12,
+    backgroundColor: Colors.white,
+    padding: 14,
     borderRadius: 8,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: Colors.border,
+    gap: 12,
   },
   checkboxSelected: {
     backgroundColor: Colors.softOrange,
     borderColor: Colors.primary,
-  },
-  checkboxIcon: {
-    fontSize: 20,
-    marginRight: 10,
+    borderWidth: 2,
   },
   checkboxText: {
+    flex: 1,
     fontSize: 16,
     color: Colors.textSecondary,
   },
   checkboxTextSelected: {
     color: Colors.primary,
-    fontWeight: 'bold',
+    fontWeight: '600',
+  },
+  checkmark: {
+    marginLeft: 'auto',
   },
   button: {
     backgroundColor: Colors.accent,
-    padding: 15,
+    padding: 16,
     borderRadius: 8,
     marginTop: 10,
   },
@@ -329,7 +394,7 @@ const styles = StyleSheet.create({
   link: {
     color: Colors.primary,
     textAlign: 'center',
-    marginTop: 15,
+    marginTop: 20,
     fontSize: 14,
   },
 });
