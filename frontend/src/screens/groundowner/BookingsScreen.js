@@ -10,7 +10,7 @@ export default function BookingsScreen() {
   const bookings = [
     {
       id: '1',
-      team: 'Thunder Strikers',
+      person: 'Kamal Perera',
       date: '2025-11-25',
       time: '09:00 AM - 12:00 PM',
       status: 'Confirmed',
@@ -19,7 +19,7 @@ export default function BookingsScreen() {
     },
     {
       id: '2',
-      team: 'Royal Kings',
+      person: 'Nimal Silva',
       date: '2025-11-25',
       time: '02:00 PM - 05:00 PM',
       status: 'Confirmed',
@@ -28,7 +28,7 @@ export default function BookingsScreen() {
     },
     {
       id: '3',
-      team: 'Fire Warriors',
+      person: 'Sunil Fernando',
       date: '2025-11-26',
       time: '09:00 AM - 12:00 PM',
       status: 'Pending',
@@ -37,7 +37,7 @@ export default function BookingsScreen() {
     },
     {
       id: '4',
-      team: 'Storm Riders',
+      person: 'Amal Jayasinghe',
       date: '2025-11-26',
       time: '06:00 PM - 09:00 PM',
       status: 'Confirmed',
@@ -46,7 +46,7 @@ export default function BookingsScreen() {
     },
     {
       id: '5',
-      team: 'Eagle Strikers',
+      person: 'Tharindu Wickramasinghe',
       date: '2025-11-27',
       time: '09:00 AM - 12:00 PM',
       status: 'Cancelled',
@@ -57,18 +57,18 @@ export default function BookingsScreen() {
 
   const filteredBookings = bookings.filter(booking => {
     const matchesStatus = filterStatus === 'All' || booking.status === filterStatus;
-    const matchesSearch = booking.team.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = booking.person.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
   const renderBooking = ({ item }) => (
     <View style={styles.bookingCard}>
       <View style={styles.bookingHeader}>
-        <View style={styles.teamIconContainer}>
-          <Ionicons name="people" size={28} color={Colors.primary} />
+        <View style={styles.personIconContainer}>
+          <Ionicons name="person" size={28} color={Colors.primary} />
         </View>
         <View style={styles.bookingInfo}>
-          <Text style={styles.teamName}>{item.team}</Text>
+          <Text style={styles.personName}>{item.person}</Text>
           <View style={styles.dateTimeRow}>
             <Ionicons name="calendar-outline" size={14} color={Colors.textSecondary} />
             <Text style={styles.dateText}>{item.date}</Text>
@@ -123,7 +123,7 @@ export default function BookingsScreen() {
           <Ionicons name="search" size={20} color={Colors.textSecondary} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search team name..."
+            placeholder="Search person name..."
             placeholderTextColor={Colors.textLight}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 15,
   },
-  teamIconContainer: {
+  personIconContainer: {
     width: 60,
     height: 60,
     borderRadius: 30,
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   bookingInfo: {
     flex: 1,
   },
-  teamName: {
+  personName: {
     fontSize: 17,
     fontWeight: '600',
     color: Colors.textPrimary,

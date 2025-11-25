@@ -6,6 +6,7 @@ import GroundOwnerHomeScreen from '../screens/groundowner/GroundOwnerHomeScreen'
 import CalendarScreen from '../screens/groundowner/CalendarScreen';
 import BookingsScreen from '../screens/groundowner/BookingsScreen';
 import PriceScreen from '../screens/groundowner/PriceScreen';
+import GroundOwnerProfileScreen from '../screens/groundowner/GroundOwnerProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -60,6 +61,15 @@ export default function GroundOwnerDashboard() {
         options={{
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cash" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Profile" 
+        component={GroundOwnerProfileScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person" size={size} color={color} />
           ),
         }}
       />

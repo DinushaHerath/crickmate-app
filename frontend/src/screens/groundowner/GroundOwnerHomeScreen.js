@@ -14,21 +14,24 @@ export default function GroundOwnerHomeScreen({ navigation }) {
   const todayBookings = [
     {
       id: '1',
-      team: 'Thunder Strikers',
+      person: 'Kamal Perera',
+      mobile: '0771234567',
       time: '09:00 AM - 12:00 PM',
       status: 'Confirmed',
       amount: 8000
     },
     {
       id: '2',
-      team: 'Royal Kings',
+      person: 'Nimal Silva',
+      mobile: '0779876543',
       time: '02:00 PM - 05:00 PM',
       status: 'Confirmed',
       amount: 8000
     },
     {
       id: '3',
-      team: 'Fire Warriors',
+      person: 'Sunil Fernando',
+      mobile: '0761234567',
       time: '06:00 PM - 09:00 PM',
       status: 'Pending',
       amount: 10000
@@ -94,11 +97,11 @@ export default function GroundOwnerHomeScreen({ navigation }) {
         {todayBookings.map((booking) => (
           <View key={booking.id} style={styles.bookingCard}>
             <View style={styles.bookingHeader}>
-              <View style={styles.teamIconContainer}>
-                <Ionicons name="people" size={24} color={Colors.primary} />
+              <View style={styles.personIconContainer}>
+                <Ionicons name="person" size={24} color={Colors.primary} />
               </View>
               <View style={styles.bookingInfo}>
-                <Text style={styles.teamName}>{booking.team}</Text>
+                <Text style={styles.personName}>{booking.person}</Text>
                 <View style={styles.bookingTime}>
                   <Ionicons name="time-outline" size={16} color={Colors.textSecondary} />
                   <Text style={styles.timeText}>{booking.time}</Text>
@@ -125,38 +128,6 @@ export default function GroundOwnerHomeScreen({ navigation }) {
             </View>
           </View>
         ))}
-      </View>
-
-      {/* Quick Actions */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-        <View style={styles.actionsGrid}>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('Calendar')}
-          >
-            <Ionicons name="calendar" size={32} color={Colors.primary} />
-            <Text style={styles.actionText}>View Calendar</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('Price')}
-          >
-            <Ionicons name="cash" size={32} color={Colors.accent} />
-            <Text style={styles.actionText}>Update Pricing</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="stats-chart" size={32} color={Colors.secondary} />
-            <Text style={styles.actionText}>View Reports</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="settings" size={32} color={Colors.textSecondary} />
-            <Text style={styles.actionText}>Settings</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </ScrollView>
   );
@@ -264,7 +235,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  teamIconContainer: {
+  personIconContainer: {
     width: 50,
     height: 50,
     borderRadius: 25,
@@ -276,7 +247,7 @@ const styles = StyleSheet.create({
   bookingInfo: {
     flex: 1,
   },
-  teamName: {
+  personName: {
     fontSize: 16,
     fontWeight: '600',
     color: Colors.textPrimary,
@@ -334,27 +305,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: Colors.primary,
-  },
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 10,
-  },
-  actionButton: {
-    width: '48%',
-    backgroundColor: Colors.white,
-    borderRadius: 12,
-    padding: 20,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  actionText: {
-    fontSize: 14,
-    color: Colors.textPrimary,
-    marginTop: 8,
-    textAlign: 'center',
-    fontWeight: '500',
   },
 });
