@@ -10,7 +10,7 @@ const Tab = createMaterialTopTabNavigator();
 
 export default function MatchesStack() {
   return (
-    <View style={{ flex: 1, paddingTop: 0 }}>
+    <View style={{ flex: 1, paddingTop: 10 }}>
       <Tab.Navigator
         screenOptions={{
           tabBarActiveTintColor: Colors.primary,
@@ -26,15 +26,15 @@ export default function MatchesStack() {
           },
           tabBarStyle: {
             backgroundColor: Colors.white,
-            elevation: 2,
-            shadowOpacity: 0.06,
+            elevation: 1,
+            shadowOpacity: 0.05,
             shadowOffset: { width: 0, height: 1 },
             shadowRadius: 2,
-            paddingVertical: 6,
-            marginBottom: 6,
+            paddingVertical: 4,
+            marginBottom: 4,
           },
           tabBarItemStyle: {
-            paddingVertical: 6,
+            paddingVertical: 4,
           },
         }}
       >
