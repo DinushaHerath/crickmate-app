@@ -106,3 +106,16 @@ export const rejectInvitation = async (inviteId, token) => {
   );
   return response.data;
 };
+
+// Wrapper functions for TeamInvitationsScreen
+export const getTeamInvitations = async (token) => {
+  return getInvitations(null, token); // Get all invitations
+};
+
+export const respondToInvitation = async (inviteId, status, token) => {
+  if (status === 'accepted') {
+    return acceptInvitation(inviteId, token);
+  } else {
+    return rejectInvitation(inviteId, token);
+  }
+};

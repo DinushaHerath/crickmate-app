@@ -255,7 +255,10 @@ router.get('/invites', auth, async (req, res) => {
 
     console.log(`Found ${invitations.length} invitations`);
 
-    res.json({ invitations });
+    res.json({ 
+      success: true,
+      invitations 
+    });
 
   } catch (error) {
     console.error('Error fetching invitations:', error);
@@ -298,6 +301,7 @@ router.put('/invites/:inviteId/accept', auth, async (req, res) => {
     console.log('User added to team:', invitation.teamId);
 
     res.json({
+      success: true,
       message: 'Invitation accepted',
       invitation
     });
@@ -338,6 +342,7 @@ router.put('/invites/:inviteId/reject', auth, async (req, res) => {
     console.log('Invitation rejected');
 
     res.json({
+      success: true,
       message: 'Invitation rejected',
       invitation
     });
