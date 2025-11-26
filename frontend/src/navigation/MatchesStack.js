@@ -51,7 +51,7 @@ export default function MatchesStack() {
       <Tab.Screen 
         name="Available" 
         component={AvailableMatchesScreen}
-        options={{ title: 'Available' }}
+        options={{ title: 'Create' }}
       />
     </Tab.Navigator>
     </View>

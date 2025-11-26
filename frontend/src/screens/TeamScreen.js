@@ -126,7 +126,7 @@ export default function TeamScreen({ navigation }) {
         <TouchableOpacity 
           style={[styles.actionButton, styles.actionButtonSecondary]}
           onPress={() => navigation.navigate('Home', { 
-            screen: 'FindTeams' 
+            screen: 'JoinTeam' 
           })}
         >
           <View style={[styles.actionIconContainer, styles.actionIconSecondary]}>

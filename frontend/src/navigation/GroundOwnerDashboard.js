@@ -6,7 +6,7 @@ import GroundOwnerHomeScreen from '../screens/groundowner/GroundOwnerHomeScreen'
 import CalendarScreen from '../screens/groundowner/CalendarScreen';
 import BookingsScreen from '../screens/groundowner/BookingsScreen';
 import PriceScreen from '../screens/groundowner/PriceScreen';
-import GroundOwnerProfileScreen from '../screens/groundowner/GroundOwnerProfileScreen';
+import GroundOwnerProfileScreen from '../screens/ground/GroundOwnerProfileScreen';
 
 const Tab = createBottomTabNavigator();
 

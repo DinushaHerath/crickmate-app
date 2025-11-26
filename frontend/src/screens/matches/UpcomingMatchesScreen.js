@@ -1,30 +1,39 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Modal, ScrollView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Colors } from '../../../constants/theme';
 import { getUpcomingMatches } from '../../api/matches';
+import { getMatchRequests, acceptMatchRequest, rejectMatchRequest } from '../../api/matchRequests';
+import { getMyTeams } from '../../api/teams';
 
 export default function UpcomingMatchesScreen() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [matches, setMatches] = useState([]);
+  const [receivedRequests, setReceivedRequests] = useState([]);
+  const [myTeams, setMyTeams] = useState([]);
+  const [showRequestsModal, setShowRequestsModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
-  const token = useSelector(state => state.auth.token);
+  const { token, user } = useSelector(state => state.auth);
 
   const fetchMatches = async () => {
     try {
       setLoading(true);
-      console.log('Fetching upcoming matches with token:', token ? 'Token exists' : 'No token');
-      const response = await getUpcomingMatches(token);
-      console.log('Upcoming matches response:', response.data);
-      setMatches(response.data);
+      const [matchesResponse, requestsResponse, teamsResponse] = await Promise.all([
+        getUpcomingMatches(token),
+        getMatchRequests('received', token),
+        getMyTeams(token)
+      ]);
+      
+      setMatches(matchesResponse.data || []);
+      setReceivedRequests(requestsResponse.requests || []);
+      setMyTeams(teamsResponse.teams || []);
     } catch (error) {
-      console.error('Error fetching upcoming matches:', error);
-      console.error('Error response:', error.response?.data);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
@@ -95,7 +104,7 @@ export default function UpcomingMatchesScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Filter Section */}
+      {/* Filter Section with Notification */}
       <View style={styles.filterContainer}>
         <TouchableOpacity 
           style={styles.filterButton}
@@ -115,6 +124,19 @@ export default function UpcomingMatchesScreen() {
             <Ionicons name="close-circle" size={20} color={Colors.error} />
           </TouchableOpacity>
         )}
+        
+        {/* Match Requests Notification */}
+        <TouchableOpacity 
+          style={styles.notificationButton}
+          onPress={() => setShowRequestsModal(true)}
+        >
+          <Ionicons name="mail" size={24} color={Colors.primary} />
+          {receivedRequests.length > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{receivedRequests.length}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
 
       {/* Matches List */}
@@ -139,6 +161,114 @@ export default function UpcomingMatchesScreen() {
               <Text style={styles.emptySubText}>Matches you create or join will appear here</Text>
             </View>
           }
+        />
+      )}
+      
+      {/* Match Requests Modal */}
+      <Modal
+        visible={showRequestsModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowRequestsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Match Requests</Text>
+              <TouchableOpacity onPress={() => setShowRequestsModal(false)}>
+                <Ionicons name="close" size={28} color={Colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.modalContent}>
+              {receivedRequests.length > 0 ? (
+                receivedRequests.map((request) => {
+                  const isCaptain = myTeams.some(team => 
+                    team._id === request.toTeam?._id && team.captain?.toString() === user?.id
+                  );
+                  
+                  return (
+                    <View key={request._id} style={styles.requestCard}>
+                      <View style={styles.requestHeader}>
+                        <Text style={styles.requestTeam}>{request.fromTeam?.name || 'Unknown Team'}</Text>
+                        <View style={[styles.statusBadge, { backgroundColor: Colors.softOrange }]}>
+                          <Text style={[styles.statusText, { color: Colors.accent }]}>{request.status}</Text>
+                        </View>
+                      </View>
+                      
+                      <Text style={styles.requestDetail}>To: {request.toTeam?.name || 'Your Team'}</Text>
+                      <Text style={styles.requestDetail}>Date: {new Date(request.proposedDate).toLocaleDateString()}</Text>
+                      <Text style={styles.requestDetail}>Time: {request.proposedTime}</Text>
+                      <Text style={styles.requestDetail}>Ground: {request.groundName}</Text>
+                      {request.message && (
+                        <Text style={styles.requestMessage}>"{request.message}"</Text>
+                      )}
+                      
+                      {isCaptain && request.status === 'pending' ? (
+                        <View style={styles.actionButtons}>
+                          <TouchableOpacity 
+                            style={styles.acceptButton}
+                            onPress={async () => {
+                              try {
+                                await acceptMatchRequest(request._id, token);
+                                Alert.alert('Success', 'Match request accepted!');
+                                fetchMatches();
+                                setShowRequestsModal(false);
+                              } catch (error) {
+                                Alert.alert('Error', 'Failed to accept request');
+                              }
+                            }}
+                          >
+                            <Ionicons name="checkmark-circle" size={20} color={Colors.white} />
+                            <Text style={styles.acceptButtonText}>Accept</Text>
+                          </TouchableOpacity>
+                          
+                          <TouchableOpacity 
+                            style={styles.rejectButton}
+                            onPress={async () => {
+                              try {
+                                await rejectMatchRequest(request._id, token);
+                                Alert.alert('Rejected', 'Match request rejected');
+                                fetchMatches();
+                              } catch (error) {
+                                Alert.alert('Error', 'Failed to reject request');
+                              }
+                            }}
+                          >
+                            <Ionicons name="close-circle" size={20} color={Colors.error} />
+                            <Text style={styles.rejectButtonText}>Reject</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <Text style={styles.captainNote}>
+                          {isCaptain ? 'Request already processed' : 'Only team captain can accept/reject'}
+                        </Text>
+                      )}
+                    </View>
+                  );
+                })
+              ) : (
+                <View style={styles.emptyRequests}>
+                  <Ionicons name="mail-open-outline" size={48} color={Colors.textSecondary} />
+                  <Text style={styles.emptyText}>No match requests</Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={new Date()}
+          mode="date"
+          display="default"
+          onChange={(event, date) => {
+            setShowDatePicker(false);
+            if (date) {
+              setSelectedDate(formatDate(date.toString()));
+            }
+          }}
         />
       )}
     </View>
@@ -174,6 +304,28 @@ const styles = StyleSheet.create({
   clearButton: {
     justifyContent: 'center',
     padding: 8,
+  },
+  notificationButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 8,
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: Colors.error,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeText: {
+    color: Colors.white,
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   listContainer: {
     padding: 15,
@@ -298,5 +450,115 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 14,
     color: Colors.textSecondary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.textPrimary,
+  },
+  modalContent: {
+    padding: 15,
+  },
+  requestCard: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.primary,
+  },
+  requestHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  requestTeam: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.textPrimary,
+    flex: 1,
+  },
+  requestDetail: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    marginBottom: 5,
+  },
+  requestMessage: {
+    fontSize: 14,
+    color: Colors.textPrimary,
+    fontStyle: 'italic',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 15,
+  },
+  acceptButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: Colors.accent,
+    padding: 12,
+    borderRadius: 8,
+  },
+  acceptButtonText: {
+    color: Colors.white,
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  rejectButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: Colors.white,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: Colors.error,
+  },
+  rejectButtonText: {
+    color: Colors.error,
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  captainNote: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontStyle: 'italic',
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  emptyRequests: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
   },
 });

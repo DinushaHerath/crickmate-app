@@ -1,129 +1,305 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Modal, ScrollView, RefreshControl, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/theme';
-import { MOCK_TEAMS } from '../../data/mockData';
+import { useSelector } from 'react-redux';
+import { getAvailableTeams, getMatchRequests, sendMatchRequest, acceptMatchRequest, rejectMatchRequest } from '../../api/matchRequests';
+import { getMyTeams } from '../../api/teams';
 
 export default function AvailableMatchesScreen() {
   const [searchName, setSearchName] = useState('');
-  const [searchDistrict, setSearchDistrict] = useState('');
-  const [searchVillage, setSearchVillage] = useState('');
+  const [availableTeams, setAvailableTeams] = useState([]);
+  const [matchRequests, setMatchRequests] = useState([]);
+  const [myTeams, setMyTeams] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showTeamModal, setShowTeamModal] = useState(false);
-  const [pendingRequests, setPendingRequests] = useState([]);
-  const [selectedDate, setSelectedDate] = useState('');
-  const [selectedTime, setSelectedTime] = useState('');
+  const [showRequestsModal, setShowRequestsModal] = useState(false);
+  
+  // Request form
+  const [selectedOwnTeam, setSelectedOwnTeam] = useState(null);
+  const [proposedDate, setProposedDate] = useState('');
+  const [proposedTime, setProposedTime] = useState('');
   const [groundName, setGroundName] = useState('');
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [selectedOwnTeamId, setSelectedOwnTeamId] = useState(null);
+  const [district, setDistrict] = useState('');
+  const [village, setVillage] = useState('');
+  const [matchType, setMatchType] = useState('T20');
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
 
-  const filteredTeams = MOCK_TEAMS.filter(team => {
-    const matchesName = team.name.toLowerCase().includes(searchName.toLowerCase());
-    const matchesDistrict = searchDistrict === '' || team.district?.toLowerCase().includes(searchDistrict.toLowerCase());
-    const matchesVillage = searchVillage === '' || team.village?.toLowerCase().includes(searchVillage.toLowerCase());
-    return matchesName && matchesDistrict && matchesVillage;
-  });
+  const { token, user } = useSelector((state) => state.auth);
 
-  const handleRequestMatch = () => {
-    if (!selectedDate || !selectedTime) {
-      alert('Please select date and time');
-      return;
+  const fetchData = async () => {
+    try {
+      const [teamsData, requestsData, myTeamsData] = await Promise.all([
+        getAvailableTeams(token),
+        getMatchRequests(null, token),
+        getMyTeams(token)
+      ]);
+      
+      setAvailableTeams(teamsData.teams);
+      setMatchRequests(requestsData.requests);
+      setMyTeams(myTeamsData.teams);
+      setDistrict(user?.district || '');
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-    // mark as pending locally
-    if (selectedTeam?.id) setPendingRequests(prev => [...prev, selectedTeam.id]);
-    alert(`Match request sent to ${selectedTeam?.name || 'team'}. Status: Pending`);
-    setShowRequestModal(false);
-    setSelectedDate('');
-    setSelectedTime('');
-    setGroundName('');
   };
 
-  const renderTeam = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.teamCard}
-      onPress={() => {
-        setSelectedTeam(item);
-        setShowTeamModal(true);
-      }}
-    >
-      <View style={styles.teamHeader}>
-        <View style={styles.teamInfo}>
-          <Text style={styles.teamName}>{item.name}</Text>
-          <View style={styles.teamMeta}>
-            <Ionicons name="location-outline" size={14} color={Colors.textSecondary} />
-            <Text style={styles.teamDistrict}>{item.district}</Text>
-          </View>
-          <Text style={styles.teamCaptain}>Captain: {item.captain}</Text>
-        </View>
-        <View style={{alignItems:'flex-end'}}>
-          {pendingRequests.includes(item.id) ? (
-            <View style={styles.pendingBadge}><Text style={styles.pendingText}>Pending</Text></View>
-          ) : (
-            <Ionicons name="chevron-forward" size={24} color={Colors.textLight} />
-          )}
-        </View>
-      </View>
+  useEffect(() => {
+    if (token) {
+      fetchData();
+    }
+  }, [token]);
 
-      <View style={styles.teamStats}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{item.matches}</Text>
-          <Text style={styles.statLabel}>Matches</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{item.wins}</Text>
-          <Text style={styles.statLabel}>Wins</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{((item.wins / item.matches) * 100).toFixed(0)}%</Text>
-          <Text style={styles.statLabel}>Win Rate</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchData();
+  }, [token]);
+
+  const filteredTeams = availableTeams.filter(team =>
+    team.name.toLowerCase().includes(searchName.toLowerCase())
   );
+
+  const pendingRequestIds = matchRequests
+    .filter(r => r.status === 'pending')
+    .map(r => r.receivingTeam?._id);
+
+  const handleSendRequest = async () => {
+    if (!selectedOwnTeam || !proposedDate || !proposedTime || !groundName || !district || !village) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    try {
+      setSending(true);
+      await sendMatchRequest({
+        requestingTeamId: selectedOwnTeam,
+        receivingTeamId: selectedTeam._id,
+        proposedDate,
+        proposedTime,
+        groundName,
+        district,
+        village,
+        matchType,
+        message
+      }, token);
+
+      Alert.alert('Success', 'Match request sent successfully!');
+      setShowRequestModal(false);
+      fetchData();
+      
+      // Reset form
+      setSelectedOwnTeam(null);
+      setProposedDate('');
+      setProposedTime('');
+      setGroundName('');
+      setVillage('');
+      setMatchType('T20');
+      setMessage('');
+    } catch (error) {
+      console.error('Error sending request:', error);
+      Alert.alert('Error', error.response?.data?.message || 'Failed to send request');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleAcceptRequest = async (request) => {
+    try {
+      await acceptMatchRequest(request._id, 'Request accepted!', token);
+      Alert.alert('Success', 'Match request accepted! Match has been created.');
+      setShowRequestsModal(false);
+      fetchData();
+    } catch (error) {
+      console.error('Error accepting request:', error);
+      Alert.alert('Error', error.response?.data?.message || 'Failed to accept request');
+    }
+  };
+
+  const handleRejectRequest = async (request) => {
+    try {
+      await rejectMatchRequest(request._id, 'Request rejected', token);
+      Alert.alert('Success', 'Match request rejected');
+      setShowRequestsModal(false);
+      fetchData();
+    } catch (error) {
+      console.error('Error rejecting request:', error);
+      Alert.alert('Error', error.response?.data?.message || 'Failed to reject request');
+    }
+  };
+
+  const renderTeam = ({ item }) => {
+    const hasPendingRequest = pendingRequestIds.includes(item._id);
+    const winRate = item.matchesPlayed > 0 
+      ? ((item.winMatches / item.matchesPlayed) * 100).toFixed(0) 
+      : 0;
+
+    return (
+      <TouchableOpacity 
+        style={styles.teamCard}
+        onPress={() => {
+          setSelectedTeam(item);
+          setShowTeamModal(true);
+        }}
+      >
+        <View style={styles.teamHeader}>
+          <View style={styles.teamInfo}>
+            <Text style={styles.teamName}>{item.name}</Text>
+            <View style={styles.teamMeta}>
+              <Ionicons name="location-outline" size={14} color={Colors.textSecondary} />
+              <Text style={styles.teamDistrict}>{item.district} - {item.village}</Text>
+            </View>
+            <Text style={styles.teamCaptain}>Captain: {item.captain?.fullname}</Text>
+          </View>
+          <View style={{alignItems:'flex-end'}}>
+            {hasPendingRequest ? (
+              <View style={styles.pendingBadge}>
+                <Text style={styles.pendingText}>Pending</Text>
+              </View>
+            ) : (
+              <Ionicons name="chevron-forward" size={24} color={Colors.textLight} />
+            )}
+          </View>
+        </View>
+
+        <View style={styles.teamStats}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{item.teamMembersId?.length || 0}</Text>
+            <Text style={styles.statLabel}>Members</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{item.matchesPlayed || 0}</Text>
+            <Text style={styles.statLabel}>Matches</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{item.winMatches || 0}</Text>
+            <Text style={styles.statLabel}>Wins</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{winRate}%</Text>
+            <Text style={styles.statLabel}>Win Rate</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderRequest = ({ item }) => {
+    const isReceived = myTeams.some(t => t._id === item.receivingTeam?._id);
+    const isSent = myTeams.some(t => t._id === item.requestingTeam?._id);
+    const isCaptain = isReceived && myTeams.find(t => t._id === item.receivingTeam?._id)?.captain?._id === user?.id;
+
+    return (
+      <View style={styles.requestCard}>
+        {/* Direction Badge */}
+        <View style={[styles.directionBadge, isSent ? styles.sentBadge : styles.receivedBadge]}>
+          <Ionicons 
+            name={isSent ? "arrow-forward" : "arrow-back"} 
+            size={12} 
+            color={Colors.white} 
+          />
+          <Text style={styles.directionText}>
+            {isSent ? 'SENT' : 'RECEIVED'}
+          </Text>
+        </View>
+
+        <View style={styles.requestHeader}>
+          <View style={{flex: 1}}>
+            <Text style={styles.requestTitle}>
+              {item.requestingTeam?.name} vs {item.receivingTeam?.name}
+            </Text>
+            <View style={styles.requestInfo}>
+              <Ionicons name="calendar" size={14} color={Colors.textSecondary} />
+              <Text style={styles.requestDate}>
+                {new Date(item.proposedDate).toLocaleDateString()} at {item.proposedTime}
+              </Text>
+            </View>
+            <View style={styles.requestInfo}>
+              <Ionicons name="location" size={14} color={Colors.textSecondary} />
+              <Text style={styles.requestLocation}>
+                {item.groundName}, {item.village}
+              </Text>
+            </View>
+            <View style={styles.requestInfo}>
+              <Ionicons name="trophy" size={14} color={Colors.textSecondary} />
+              <Text style={styles.requestMatchType}>{item.matchType}</Text>
+            </View>
+          </View>
+          <View style={[
+            styles.statusBadge,
+            item.status === 'accepted' && styles.acceptedBadge,
+            item.status === 'rejected' && styles.rejectedBadge,
+            item.status === 'cancelled' && styles.cancelledBadge
+          ]}>
+            <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
+          </View>
+        </View>
+
+        {item.message && (
+          <Text style={styles.requestMessage}>💬 "{item.message}"</Text>
+        )}
+
+        {item.status === 'pending' && isReceived && isCaptain && (
+          <View style={styles.requestActions}>
+            <TouchableOpacity 
+              style={styles.acceptButton}
+              onPress={() => handleAcceptRequest(item)}
+            >
+              <Ionicons name="checkmark-circle" size={20} color={Colors.white} />
+              <Text style={styles.acceptButtonText}>Accept</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.rejectButton}
+              onPress={() => handleRejectRequest(item)}
+            >
+              <Ionicons name="close-circle" size={20} color={Colors.white} />
+              <Text style={styles.rejectButtonText}>Reject</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      {/* Search Filters */}
-      <View style={styles.searchContainer}>
+      {/* Header with Requests Button */}
+      <View style={styles.header}>
         <View style={styles.searchInputWrapper}>
           <Ionicons name="search" size={20} color={Colors.textSecondary} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search team name..."
+            placeholder="Search teams..."
             value={searchName}
             onChangeText={setSearchName}
           />
         </View>
-        
-        <View style={styles.searchRow}>
-          <View style={[styles.searchInputWrapper, styles.halfWidth]}>
-            <Ionicons name="location" size={18} color={Colors.textSecondary} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="District..."
-              value={searchDistrict}
-              onChangeText={setSearchDistrict}
-            />
-          </View>
-          
-          <View style={[styles.searchInputWrapper, styles.halfWidth]}>
-            <Ionicons name="map" size={18} color={Colors.textSecondary} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Village..."
-              value={searchVillage}
-              onChangeText={setSearchVillage}
-            />
-          </View>
-        </View>
-      </View>
-
-      {/* Schedule / Teams List */}
-      <View style={styles.topActionsRow}>
-        <TouchableOpacity style={styles.scheduleButton} onPress={() => setShowScheduleModal(true)}>
-          <Ionicons name="calendar" size={18} color={Colors.white} />
-          <Text style={styles.scheduleButtonText}>Schedule Match</Text>
+        <TouchableOpacity 
+          style={styles.requestsButton}
+          onPress={() => setShowRequestsModal(true)}
+        >
+          <Ionicons name="mail" size={20} color={Colors.white} />
+          {matchRequests.filter(r => r.status === 'pending').length > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>
+                {matchRequests.filter(r => r.status === 'pending').length}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -131,12 +307,15 @@ export default function AvailableMatchesScreen() {
       <FlatList
         data={filteredTeams}
         renderItem={renderTeam}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item._id}
         contentContainerStyle={styles.listContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="people-outline" size={64} color={Colors.textLight} />
-            <Text style={styles.emptyText}>No teams found</Text>
+            <Text style={styles.emptyText}>No teams available near you</Text>
           </View>
         }
       />
@@ -158,19 +337,23 @@ export default function AvailableMatchesScreen() {
             </View>
 
             {selectedTeam && (
-              <ScrollView style={{paddingHorizontal:20}}>
+              <ScrollView>
                 <Text style={styles.selectedTeamName}>{selectedTeam.name}</Text>
-                <Text style={{color:Colors.textSecondary, marginBottom:8}}>{selectedTeam.district}</Text>
-                <Text style={{marginBottom:8}}>Captain: {selectedTeam.captain}</Text>
-                <Text style={{marginBottom:8}}>Members: {selectedTeam.members}</Text>
-                <Text style={{marginBottom:12}} numberOfLines={4}>{selectedTeam.description || ''}</Text>
+                <Text style={styles.modalSubtitle}>{selectedTeam.district} - {selectedTeam.village}</Text>
+                <Text style={styles.modalInfo}>Captain: {selectedTeam.captain?.fullname}</Text>
+                <Text style={styles.modalInfo}>Members: {selectedTeam.teamMembersId?.length || 0}</Text>
+                <Text style={styles.modalInfo}>Matches: {selectedTeam.matchesPlayed || 0}</Text>
+                <Text style={styles.modalInfo}>Wins: {selectedTeam.winMatches || 0}</Text>
 
-                <TouchableOpacity style={styles.submitButton} onPress={() => {
-                  setShowTeamModal(false);
-                  setShowRequestModal(true);
-                }}>
-                  <Ionicons name="send" size={18} color={Colors.white} />
-                  <Text style={styles.submitButtonText}>Invite for Match</Text>
+                <TouchableOpacity 
+                  style={styles.submitButton} 
+                  onPress={() => {
+                    setShowTeamModal(false);
+                    setTimeout(() => setShowRequestModal(true), 300);
+                  }}
+                >
+                  <Ionicons name="send" size={20} color={Colors.white} />
+                  <Text style={styles.submitButtonText}>Send Match Request</Text>
                 </TouchableOpacity>
               </ScrollView>
             )}
@@ -178,7 +361,7 @@ export default function AvailableMatchesScreen() {
         </View>
       </Modal>
 
-      {/* Request Match Modal */}
+      {/* Send Request Modal */}
       <Modal
         visible={showRequestModal}
         transparent
@@ -186,99 +369,146 @@ export default function AvailableMatchesScreen() {
         onRequestClose={() => setShowRequestModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <ScrollView style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Request Match</Text>
+              <Text style={styles.modalTitle}>Send Match Request</Text>
               <TouchableOpacity onPress={() => setShowRequestModal(false)}>
                 <Ionicons name="close" size={28} color={Colors.textPrimary} />
               </TouchableOpacity>
             </View>
 
-            {selectedTeam && (
-              <View style={styles.selectedTeamInfo}>
-                <Text style={styles.selectedTeamLogo}>{selectedTeam.logo}</Text>
-                <Text style={styles.selectedTeamName}>{selectedTeam.name}</Text>
-              </View>
-            )}
+            <Text style={styles.label}>Select Your Team *</Text>
+            {myTeams.map((team) => (
+              <TouchableOpacity
+                key={team._id}
+                style={[
+                  styles.teamOption,
+                  selectedOwnTeam === team._id && styles.teamOptionSelected
+                ]}
+                onPress={() => setSelectedOwnTeam(team._id)}
+              >
+                <Text style={styles.teamOptionText}>{team.name}</Text>
+                {selectedOwnTeam === team._id && (
+                  <Ionicons name="checkmark-circle" size={24} color={Colors.accent} />
+                )}
+              </TouchableOpacity>
+            ))}
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Match Date *</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="calendar-outline" size={20} color={Colors.textSecondary} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="YYYY-MM-DD"
-                  value={selectedDate}
-                  onChangeText={setSelectedDate}
-                />
-              </View>
+            <Text style={styles.label}>Proposed Date *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="YYYY-MM-DD"
+              value={proposedDate}
+              onChangeText={setProposedDate}
+            />
+
+            <Text style={styles.label}>Proposed Time *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="HH:MM AM/PM"
+              value={proposedTime}
+              onChangeText={setProposedTime}
+            />
+
+            <Text style={styles.label}>Ground Name *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter ground name"
+              value={groundName}
+              onChangeText={setGroundName}
+            />
+
+            <Text style={styles.label}>District *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter district"
+              value={district}
+              onChangeText={setDistrict}
+            />
+
+            <Text style={styles.label}>Village *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter village"
+              value={village}
+              onChangeText={setVillage}
+            />
+
+            <Text style={styles.label}>Match Type</Text>
+            <View style={styles.matchTypeContainer}>
+              {['T20', 'ODI', '10-Over', 'Test'].map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  style={[
+                    styles.matchTypeButton,
+                    matchType === type && styles.matchTypeButtonSelected
+                  ]}
+                  onPress={() => setMatchType(type)}
+                >
+                  <Text style={[
+                    styles.matchTypeText,
+                    matchType === type && styles.matchTypeTextSelected
+                  ]}>
+                    {type}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Match Time *</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="time-outline" size={20} color={Colors.textSecondary} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="HH:MM AM/PM"
-                  value={selectedTime}
-                  onChangeText={setSelectedTime}
-                />
-              </View>
-            </View>
+            <Text style={styles.label}>Message (Optional)</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Add a message..."
+              value={message}
+              onChangeText={setMessage}
+              multiline
+              numberOfLines={3}
+            />
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Ground Name (Optional)</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="location-outline" size={20} color={Colors.textSecondary} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter ground name..."
-                  value={groundName}
-                  onChangeText={setGroundName}
-                />
-              </View>
-            </View>
-
-            <TouchableOpacity style={styles.submitButton} onPress={handleRequestMatch}>
-              <Ionicons name="send" size={20} color={Colors.white} />
-              <Text style={styles.submitButtonText}>Send Request</Text>
+            <TouchableOpacity 
+              style={[styles.submitButton, sending && styles.disabledButton]} 
+              onPress={handleSendRequest}
+              disabled={sending}
+            >
+              {sending ? (
+                <ActivityIndicator size="small" color={Colors.white} />
+              ) : (
+                <>
+                  <Ionicons name="send" size={20} color={Colors.white} />
+                  <Text style={styles.submitButtonText}>Send Request</Text>
+                </>
+              )}
             </TouchableOpacity>
-          </View>
+          </ScrollView>
         </View>
       </Modal>
 
-      {/* Schedule Match Modal (choose your team first) */}
+      {/* Match Requests Modal */}
       <Modal
-        visible={showScheduleModal}
+        visible={showRequestsModal}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowScheduleModal(false)}
+        onRequestClose={() => setShowRequestsModal(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Schedule Match</Text>
-              <TouchableOpacity onPress={() => setShowScheduleModal(false)}>
+              <Text style={styles.modalTitle}>Match Requests</Text>
+              <TouchableOpacity onPress={() => setShowRequestsModal(false)}>
                 <Ionicons name="close" size={28} color={Colors.textPrimary} />
               </TouchableOpacity>
             </View>
 
-            <View style={{padding:20}}>
-              <Text style={styles.label}>Choose Your Team</Text>
-              {/* list user's teams - using MOCK_TEAMS for demo */}
-              {MOCK_TEAMS.map(t => (
-                <TouchableOpacity key={t.id} style={[styles.teamSelectRow, selectedOwnTeamId === t.id && styles.teamSelectRowActive]} onPress={() => setSelectedOwnTeamId(t.id)}>
-                  <Text style={styles.teamName}>{t.name}</Text>
-                </TouchableOpacity>
-              ))}
-
-              <Text style={[styles.label,{marginTop:16}]}>Now select opponent from list below</Text>
-              <Text style={{color:Colors.textSecondary,marginBottom:8}}>Search opponent by name, district or village</Text>
-              <TouchableOpacity style={styles.submitButton} onPress={() => { setShowScheduleModal(false); }}>
-                <Text style={styles.submitButtonText}>Done</Text>
-              </TouchableOpacity>
-            </View>
+            <FlatList
+              data={matchRequests}
+              renderItem={renderRequest}
+              keyExtractor={(item) => item._id}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>No match requests</Text>
+                </View>
+              }
+            />
           </View>
         </View>
       </Modal>
@@ -291,33 +521,56 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  searchContainer: {
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    flexDirection: 'row',
     padding: 15,
+    gap: 10,
     backgroundColor: Colors.white,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
   searchInputWrapper: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.cardBackground,
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    marginBottom: 10,
-  },
-  searchRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  halfWidth: {
-    flex: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 45,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
+    marginLeft: 8,
     fontSize: 16,
-    color: Colors.textPrimary,
+  },
+  requestsButton: {
+    width: 45,
+    height: 45,
+    backgroundColor: Colors.primary,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: Colors.error,
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeText: {
+    color: Colors.white,
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   listContainer: {
     padding: 15,
@@ -332,12 +585,8 @@ const styles = StyleSheet.create({
   },
   teamHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 12,
-  },
-  teamLogo: {
-    fontSize: 42,
-    marginRight: 12,
   },
   teamInfo: {
     flex: 1,
@@ -346,13 +595,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: Colors.textPrimary,
-    marginBottom: 4,
+    marginBottom: 5,
   },
   teamMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
     gap: 4,
+    marginBottom: 4,
   },
   teamDistrict: {
     fontSize: 12,
@@ -369,64 +618,38 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
-  pendingBadge: {
-    backgroundColor: Colors.accent,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  pendingText: {
-    color: Colors.white,
-    fontWeight: '600',
-  },
-  topActionsRow: {
-    padding: 12,
-    backgroundColor: Colors.background,
-    alignItems: 'flex-end',
-  },
-  scheduleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 8,
-  },
-  scheduleButtonText: {
-    color: Colors.white,
-    fontWeight: '600',
-  },
-  teamSelectRow: {
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: Colors.cardBackground,
-    marginBottom: 8,
-  },
-  teamSelectRowActive: {
-    backgroundColor: Colors.primary,
-  },
   statItem: {
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: Colors.primary,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  pendingBadge: {
+    backgroundColor: Colors.softOrange,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  pendingText: {
+    color: Colors.secondary,
+    fontSize: 12,
+    fontWeight: '600',
   },
   emptyContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 80,
+    paddingVertical: 60,
   },
   emptyText: {
     fontSize: 16,
-    color: Colors.textLight,
-    marginTop: 10,
+    color: Colors.textSecondary,
+    marginTop: 15,
   },
   modalOverlay: {
     flex: 1,
@@ -438,7 +661,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    maxHeight: '80%',
+    maxHeight: '90%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -451,45 +674,82 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.textPrimary,
   },
-  selectedTeamInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.cardBackground,
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 20,
-    gap: 15,
-  },
-  selectedTeamLogo: {
-    fontSize: 48,
-  },
   selectedTeamName: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: Colors.primary,
-  },
-  formGroup: {
-    marginBottom: 15,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
     color: Colors.textPrimary,
     marginBottom: 8,
   },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 8,
-    paddingHorizontal: 15,
+  modalSubtitle: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+    marginBottom: 16,
+  },
+  modalInfo: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    marginBottom: 8,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginTop: 12,
+    marginBottom: 8,
   },
   input: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 12,
+  },
+  textArea: {
+    height: 80,
+    textAlignVertical: 'top',
+  },
+  teamOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: Colors.cardBackground,
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  teamOptionSelected: {
+    backgroundColor: Colors.softOrange,
+    borderColor: Colors.primary,
+    borderWidth: 2,
+  },
+  teamOptionText: {
     fontSize: 16,
     color: Colors.textPrimary,
+  },
+  matchTypeContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+  matchTypeButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: Colors.cardBackground,
+    alignItems: 'center',
+  },
+  matchTypeButtonSelected: {
+    backgroundColor: Colors.primary,
+  },
+  matchTypeText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  matchTypeTextSelected: {
+    color: Colors.white,
+    fontWeight: '600',
   },
   submitButton: {
     flexDirection: 'row',
@@ -497,13 +757,143 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: Colors.accent,
     padding: 16,
-    borderRadius: 12,
-    marginTop: 10,
+    borderRadius: 8,
+    marginTop: 12,
     gap: 8,
   },
   submitButtonText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: Colors.white,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  requestCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    position: 'relative',
+  },
+  directionBadge: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    zIndex: 1,
+  },
+  sentBadge: {
+    backgroundColor: Colors.primary,
+  },
+  receivedBadge: {
+    backgroundColor: Colors.accent,
+  },
+  directionText: {
+    color: Colors.white,
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  requestHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    marginTop: 25,
+  },
+  requestTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.textPrimary,
+    marginBottom: 6,
+  },
+  requestInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  requestDate: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  requestLocation: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  requestMatchType: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    fontWeight: '600',
+  },
+  requestMessage: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontStyle: 'italic',
+    marginTop: 8,
+    marginBottom: 8,
+    paddingLeft: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.primary,
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: Colors.softOrange,
+    height: 28,
+  },
+  acceptedBadge: {
+    backgroundColor: Colors.accent,
+  },
+  rejectedBadge: {
+    backgroundColor: Colors.error,
+  },
+  cancelledBadge: {
+    backgroundColor: Colors.textLight,
+  },
+  statusText: {
+    color: Colors.white,
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  requestActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  acceptButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.accent,
+    padding: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  acceptButtonText: {
+    color: Colors.white,
+    fontWeight: '600',
+  },
+  rejectButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.error,
+    padding: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  rejectButtonText: {
+    color: Colors.white,
+    fontWeight: '600',
   },
 });
