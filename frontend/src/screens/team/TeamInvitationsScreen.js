@@ -1,44 +1,74 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/theme';
-
-// Mock invitations data
-const MOCK_INVITATIONS = [
-  {
-    id: '1',
-    teamName: 'Thunder Strikers',
-    teamLogo: '⚡',
-    from: 'John Player',
-    role: 'All-Rounder',
-    date: '2024-02-14',
-    status: 'pending',
-  },
-  {
-    id: '2',
-    teamName: 'Royal Warriors',
-    teamLogo: '👑',
-    from: 'Mike Champion',
-    role: 'Batsman',
-    date: '2024-02-13',
-    status: 'pending',
-  },
-];
+import { useSelector } from 'react-redux';
+import { getTeamInvitations, respondToInvitation } from '../../api/teams';
 
 export default function TeamInvitationsScreen({ navigation }) {
-  const [invitations, setInvitations] = useState(MOCK_INVITATIONS);
+  const token = useSelector((state) => state.auth.token);
+  const [invitations, setInvitations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const handleAccept = (invitationId) => {
-    setInvitations(invitations.map(inv => 
-      inv.id === invitationId ? { ...inv, status: 'accepted' } : inv
-    ));
-    alert('Invitation accepted! You have been added to the team.');
+  const fetchInvitations = async () => {
+    try {
+      const response = await getTeamInvitations(token);
+      if (response.success) {
+        setInvitations(response.invitations || []);
+      }
+    } catch (error) {
+      console.error('Error fetching invitations:', error);
+      Alert.alert('Error', 'Failed to load team invitations');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  const handleReject = (invitationId) => {
-    setInvitations(invitations.filter(inv => inv.id !== invitationId));
-    alert('Invitation rejected.');
+  useEffect(() => {
+    fetchInvitations();
+  }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchInvitations();
   };
+
+  const handleAccept = async (invitationId) => {
+    try {
+      const response = await respondToInvitation(invitationId, 'accepted', token);
+      if (response.success) {
+        Alert.alert('Success', 'You have joined the team!');
+        fetchInvitations(); // Refresh the list
+      }
+    } catch (error) {
+      console.error('Error accepting invitation:', error);
+      Alert.alert('Error', 'Failed to accept invitation');
+    }
+  };
+
+  const handleReject = async (invitationId) => {
+    try {
+      const response = await respondToInvitation(invitationId, 'rejected', token);
+      if (response.success) {
+        Alert.alert('Rejected', 'Invitation has been rejected');
+        fetchInvitations(); // Refresh the list
+      }
+    } catch (error) {
+      console.error('Error rejecting invitation:', error);
+      Alert.alert('Error', 'Failed to reject invitation');
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={{ marginTop: 10, color: Colors.textSecondary }}>Loading invitations...</Text>
+      </View>
+    );
+  }
 
   const renderInvitation = ({ item }) => (
     <View style={[
@@ -46,30 +76,31 @@ export default function TeamInvitationsScreen({ navigation }) {
       item.status === 'accepted' && styles.acceptedCard
     ]}>
       <View style={styles.invitationHeader}>
-        <Text style={styles.teamLogo}>{item.teamLogo}</Text>
+        <Text style={styles.teamLogo}>🏏</Text>
         <View style={styles.invitationInfo}>
-          <Text style={styles.teamName}>{item.teamName}</Text>
+          <Text style={styles.teamName}>{item.teamId?.name || 'Team'}</Text>
           <View style={styles.invitationMeta}>
             <Ionicons name="person-outline" size={14} color={Colors.textSecondary} />
-            <Text style={styles.fromText}>From: {item.from}</Text>
+            <Text style={styles.fromText}>From: {item.invitedBy?.fullname || 'Team Captain'}</Text>
           </View>
           <View style={styles.invitationMeta}>
             <Ionicons name="calendar-outline" size={14} color={Colors.textSecondary} />
-            <Text style={styles.dateText}>{item.date}</Text>
+            <Text style={styles.dateText}>
+              {new Date(item.createdAt).toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric',
+                year: 'numeric'
+              })}
+            </Text>
           </View>
         </View>
-      </View>
-
-      <View style={styles.roleContainer}>
-        <Ionicons name="trophy-outline" size={16} color={Colors.secondary} />
-        <Text style={styles.roleText}>Invited as: {item.role}</Text>
       </View>
 
       {item.status === 'pending' ? (
         <View style={styles.buttonContainer}>
           <TouchableOpacity 
             style={styles.acceptButton}
-            onPress={() => handleAccept(item.id)}
+            onPress={() => handleAccept(item._id)}
           >
             <Ionicons name="checkmark-circle" size={20} color={Colors.white} />
             <Text style={styles.acceptButtonText}>Accept</Text>
@@ -77,7 +108,7 @@ export default function TeamInvitationsScreen({ navigation }) {
           
           <TouchableOpacity 
             style={styles.rejectButton}
-            onPress={() => handleReject(item.id)}
+            onPress={() => handleReject(item._id)}
           >
             <Ionicons name="close-circle" size={20} color={Colors.error} />
             <Text style={styles.rejectButtonText}>Reject</Text>
@@ -85,8 +116,12 @@ export default function TeamInvitationsScreen({ navigation }) {
         </View>
       ) : (
         <View style={styles.statusContainer}>
-          <Ionicons name="checkmark-done" size={24} color={Colors.accent} />
-          <Text style={styles.statusText}>Accepted</Text>
+          <Ionicons 
+            name={item.status === 'accepted' ? 'checkmark-done' : 'close-circle'} 
+            size={24} 
+            color={item.status === 'accepted' ? Colors.accent : Colors.error} 
+          />
+          <Text style={styles.statusText}>{item.status === 'accepted' ? 'Accepted' : 'Rejected'}</Text>
         </View>
       )}
     </View>
@@ -106,11 +141,14 @@ export default function TeamInvitationsScreen({ navigation }) {
       <FlatList
         data={invitations}
         renderItem={renderInvitation}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item._id}
         contentContainerStyle={styles.listContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="mail-open-outline" size={64} color={Colors.textLight} />
+            <Ionicons name="mail-open-outline" size={64} color={Colors.textSecondary} />
             <Text style={styles.emptyText}>No invitations</Text>
             <Text style={styles.emptySubtext}>You're all caught up!</Text>
           </View>

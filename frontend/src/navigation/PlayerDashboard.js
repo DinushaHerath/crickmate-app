@@ -6,7 +6,7 @@ import HomeStack from './HomeStack';
 import MatchesStack from './MatchesStack';
 import GroundsScreen from '../screens/GroundsScreen';
 import TeamScreen from '../screens/TeamScreen';
-import ProfileScreen from '../screens/ProfileScreenNew';
+import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 

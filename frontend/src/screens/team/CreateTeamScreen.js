@@ -145,8 +145,8 @@ export default function CreateTeamScreen({ navigation }) {
       </View>
 
       <TouchableOpacity style={styles.nextButton} onPress={() => setStep(2)}>
-        <Text style={styles.buttonText}>Next: Add Players</Text>
-        <Ionicons name="arrow-forward" size={20} color={Colors.white} />
+        <Ionicons name="arrow-forward" size={18} color={Colors.white} />
+        <Text style={styles.nextButtonText}>Next: Add Players</Text>
       </TouchableOpacity>
     </View>
   );
@@ -583,14 +583,20 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   nextButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.primary,
-    padding: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     borderRadius: 8,
     gap: 8,
+    alignSelf: 'flex-start',
+  },
+  nextButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.white,
   },
   backButton: {
     flex: 1,

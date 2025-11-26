@@ -1,17 +1,67 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Modal } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Modal, RefreshControl, ActivityIndicator } from 'react-native';
 import { useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/theme';
-import { MOCK_TEAMS, MOCK_MATCHES, getUpcomingMatches, MOCK_GROUNDS } from '../data/mockData';
+import { getHomeStats } from '../api/homeStats';
+import { getInvitations } from '../api/teams';
+import { MOCK_GROUNDS } from '../data/mockData';
 
 const { width } = Dimensions.get('window');
 
 export default function PlayerHomeScreen({ navigation }) {
   const user = useSelector((state) => state.auth.user);
-  const upcomingMatches = getUpcomingMatches().slice(0, 3);
-  const [showGroundModal, setShowGroundModal] = React.useState(false);
-  const [selectedGround, setSelectedGround] = React.useState(null);
+  const token = useSelector((state) => state.auth.token);
+  
+  const [homeData, setHomeData] = useState(null);
+  const [invitationCount, setInvitationCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showGroundModal, setShowGroundModal] = useState(false);
+  const [selectedGround, setSelectedGround] = useState(null);
+
+  const fetchHomeData = async () => {
+    try {
+      const [statsResponse, invitationsResponse] = await Promise.all([
+        getHomeStats(token),
+        getInvitations('pending', token)
+      ]);
+      
+      console.log('Home Stats Response:', statsResponse);
+      console.log('Upcoming Matches:', statsResponse?.data?.upcomingMatches);
+      
+      if (statsResponse.success) {
+        setHomeData(statsResponse.data);
+      }
+      
+      if (invitationsResponse.success) {
+        setInvitationCount(invitationsResponse.invitations?.length || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching home data:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHomeData();
+  }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchHomeData();
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={{ marginTop: 10, color: Colors.textSecondary }}>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -27,27 +77,35 @@ export default function PlayerHomeScreen({ navigation }) {
             onPress={() => navigation.navigate('TeamInvitations')}
           >
             <Ionicons name="notifications" size={28} color={Colors.primary} />
-            <View style={styles.notificationBadge}>
-              <Text style={styles.badgeCount}>2</Text>
-            </View>
+            {invitationCount > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.badgeCount}>{invitationCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
+        }
+      >
 
       {/* Stats Cards */}
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>{user?.stats?.matches || 45}</Text>
+          <Text style={styles.statValue}>{homeData?.stats?.totalMatches || 0}</Text>
           <Text style={styles.statLabel}>Matches</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>{user?.stats?.runs || 1250}</Text>
-          <Text style={styles.statLabel}>Runs</Text>
+          <Text style={styles.statValue}>{homeData?.stats?.wins || 0}</Text>
+          <Text style={styles.statLabel}>Wins</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>{user?.teams?.length || 2}</Text>
+          <Text style={styles.statValue}>{homeData?.stats?.teams || 0}</Text>
           <Text style={styles.statLabel}>Teams</Text>
         </View>
       </View>
@@ -56,84 +114,111 @@ export default function PlayerHomeScreen({ navigation }) {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Upcoming Matches</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Matches')}>
             <Text style={styles.seeAll}>See All →</Text>
           </TouchableOpacity>
         </View>
         
-        {upcomingMatches.map((match) => (
-          <TouchableOpacity key={match.id} style={styles.matchCard}>
-            <View style={styles.matchHeader}>
-              <View style={styles.matchDateContainer}>
-                <Ionicons name="calendar-outline" size={14} color={Colors.textSecondary} />
-                <Text style={styles.matchDate}>{match.date}</Text>
+        {homeData?.upcomingMatches && homeData.upcomingMatches.length > 0 ? (
+          homeData.upcomingMatches.slice(0, 3).map((match) => (
+            <TouchableOpacity key={match.id} style={styles.matchCard}>
+              <View style={styles.matchHeader}>
+                <View style={styles.matchDateContainer}>
+                  <Ionicons name="calendar-outline" size={14} color={Colors.textSecondary} />
+                  <Text style={styles.matchDate}>{match.date}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                  {match.createdByUser && (
+                    <View style={styles.createdByBadge}>
+                      <Text style={styles.createdByText}>Created by you</Text>
+                    </View>
+                  )}
+                  <Text style={styles.matchType}>{match.type}</Text>
+                </View>
               </View>
-              <Text style={styles.matchType}>{match.type}</Text>
-            </View>
-            <View style={styles.matchTeams}>
-              <Text style={styles.teamName}>{match.team1}</Text>
-              <Text style={styles.vs}>VS</Text>
-              <Text style={styles.teamName}>{match.team2}</Text>
-            </View>
-            <View style={styles.matchDetails}>
-              <View style={styles.matchInfoItem}>
-                <Ionicons name="time-outline" size={14} color={Colors.textSecondary} />
-                <Text style={styles.matchInfo}>{match.time}</Text>
+              <View style={styles.matchTeams}>
+                <Text style={styles.teamName}>{match.team1}</Text>
+                <Text style={styles.vs}>VS</Text>
+                <Text style={styles.teamName}>{match.team2}</Text>
               </View>
-              <View style={styles.matchInfoItem}>
-                <Ionicons name="location-outline" size={14} color={Colors.textSecondary} />
-                <TouchableOpacity onPress={() => {
-                  const g = MOCK_GROUNDS.find(gr => gr.name === match.ground);
-                  setSelectedGround(g || { name: match.ground });
-                  setShowGroundModal(true);
-                }}>
-                  <Text style={[styles.matchInfo, {textDecorationLine:'underline'}]}>{match.ground}</Text>
-                </TouchableOpacity>
+              <View style={styles.matchDetails}>
+                <View style={styles.matchInfoItem}>
+                  <Ionicons name="time-outline" size={14} color={Colors.textSecondary} />
+                  <Text style={styles.matchInfo}>{match.time}</Text>
+                </View>
+                <View style={styles.matchInfoItem}>
+                  <Ionicons name="location-outline" size={14} color={Colors.textSecondary} />
+                  <TouchableOpacity onPress={() => {
+                    const g = MOCK_GROUNDS.find(gr => gr.name === match.ground);
+                    setSelectedGround(g || { name: match.ground, district: match.groundDistrict });
+                    setShowGroundModal(true);
+                  }}>
+                    <Text style={[styles.matchInfo, {textDecorationLine:'underline'}]}>{match.ground}</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          ))
+        ) : (
+          <View style={styles.emptyState}>
+            <Ionicons name="calendar-outline" size={48} color={Colors.textSecondary} />
+            <Text style={styles.emptyText}>No upcoming matches</Text>
+          </View>
+        )}
       </View>
 
       {/* My Teams Section */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>My Teams</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Team')}>
             <Text style={styles.seeAll}>See All →</Text>
           </TouchableOpacity>
         </View>
         
-        {MOCK_TEAMS.slice(0, 2).map((team) => (
-          <TouchableOpacity key={team.id} style={styles.teamCard}>
-            <View style={styles.teamHeader}>
-              <View style={styles.teamInfoSection}>
-                <Text style={styles.teamName}>{team.name}</Text>
-                <Text style={styles.teamRole}>Captain: {team.captain}</Text>
+        {homeData?.teams && homeData.teams.length > 0 ? (
+          homeData.teams.slice(0, 2).map((team) => (
+            <TouchableOpacity key={team.id} style={styles.teamCard}>
+              {team.createdByUser && (
+                <View style={styles.createdByTeamBadge}>
+                  <Ionicons name="star" size={12} color={Colors.accent} />
+                  <Text style={styles.createdByTeamText}>Created by you</Text>
+                </View>
+              )}
+              <View style={styles.teamHeader}>
+                <View style={styles.teamInfoSection}>
+                  <Text style={styles.teamName}>{team.name}</Text>
+                  <Text style={styles.teamRole}>Captain: {team.captain}</Text>
+                </View>
+                <View style={styles.teamBadge}>
+                  <Text style={styles.badgeText}>{team.members}</Text>
+                  <Text style={styles.badgeLabel}>Members</Text>
+                </View>
               </View>
-              <View style={styles.teamBadge}>
-                <Text style={styles.badgeText}>{team.members}</Text>
-                <Text style={styles.badgeLabel}>Members</Text>
+              <View style={styles.teamStats}>
+                <View style={styles.teamStat}>
+                  <Text style={styles.teamStatValue}>{team.wins}</Text>
+                  <Text style={styles.teamStatLabel}>Wins</Text>
+                </View>
+                <View style={styles.teamStat}>
+                  <Text style={styles.teamStatValue}>{team.matches}</Text>
+                  <Text style={styles.teamStatLabel}>Matches</Text>
+                </View>
+                <View style={styles.teamStat}>
+                  <Text style={styles.teamStatValue}>
+                    {team.matches > 0 ? ((team.wins / team.matches) * 100).toFixed(0) : 0}%
+                  </Text>
+                  <Text style={styles.teamStatLabel}>Win Rate</Text>
+                </View>
               </View>
-            </View>
-            <View style={styles.teamStats}>
-              <View style={styles.teamStat}>
-                <Text style={styles.teamStatValue}>{team.wins}</Text>
-                <Text style={styles.teamStatLabel}>Wins</Text>
-              </View>
-              <View style={styles.teamStat}>
-                <Text style={styles.teamStatValue}>{team.matches}</Text>
-                <Text style={styles.teamStatLabel}>Matches</Text>
-              </View>
-              <View style={styles.teamStat}>
-                <Text style={styles.teamStatValue}>
-                  {((team.wins / team.matches) * 100).toFixed(0)}%
-                </Text>
-                <Text style={styles.teamStatLabel}>Win Rate</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          ))
+        ) : (
+          <View style={styles.emptyState}>
+            <Ionicons name="people-outline" size={48} color={Colors.textSecondary} />
+            <Text style={styles.emptyText}>No teams yet</Text>
+          </View>
+        )}
 
         <View style={styles.teamActions}>
           <TouchableOpacity 
@@ -146,7 +231,7 @@ export default function PlayerHomeScreen({ navigation }) {
           
           <TouchableOpacity 
             style={styles.joinTeamButton}
-            onPress={() => navigation.navigate('FindTeams')}
+            onPress={() => navigation.navigate('JoinTeam')}
           >
             <Ionicons name="search-outline" size={20} color={Colors.primary} />
             <Text style={styles.joinTeamText}>Join a Team</Text>
@@ -455,5 +540,45 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: Colors.textPrimary,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    marginTop: 10,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+    marginTop: 10,
+  },
+  createdByBadge: {
+    backgroundColor: Colors.softOrange,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  createdByText: {
+    fontSize: 10,
+    color: Colors.accent,
+    fontWeight: '600',
+  },
+  createdByTeamBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.softOrange,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 10,
+  },
+  createdByTeamText: {
+    fontSize: 11,
+    color: Colors.accent,
+    fontWeight: '600',
   },
 });
