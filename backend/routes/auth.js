@@ -4,103 +4,142 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// register
+// REGISTER / SIGNUP
 router.post('/register', async (req, res) => {
   try {
     const { 
-      name, 
+      fullname, 
       email, 
       password, 
       role, 
-      playerRoles, 
+      playerRole, 
       district, 
       village,
-      groundName,
-      groundAddress 
+      grounds
     } = req.body;
     
-    let user = await User.findOne({ email });
-    if (user) return res.status(400).json({ msg: 'User exists' });
+    // Check if user already exists
+    let user = await User.findOne({ email: email.toLowerCase() });
+    if (user) {
+      return res.status(400).json({ msg: 'User with this email already exists' });
+    }
 
     // Validate role
     if (!role || !['player', 'ground_owner'].includes(role)) {
-      return res.status(400).json({ msg: 'Invalid role' });
+      return res.status(400).json({ msg: 'Invalid role. Must be player or ground_owner' });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hash = await bcrypt.hash(password, salt);
+    // Validate required fields based on role
+    if (role === 'player' && !playerRole) {
+      return res.status(400).json({ msg: 'Player role is required for players' });
+    }
+    if (role === 'player' && !village) {
+      return res.status(400).json({ msg: 'Village is required for players' });
+    }
 
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Create user data object
     const userData = { 
-      name, 
-      email, 
-      password: hash, 
-      role 
+      fullname, 
+      email: email.toLowerCase(), 
+      password: hashedPassword, 
+      role,
+      district
     };
 
     // Add role-specific fields
     if (role === 'player') {
-      userData.playerRoles = playerRoles || [];
-      userData.district = district;
+      userData.playerRole = playerRole;
       userData.village = village;
     } else if (role === 'ground_owner') {
-      userData.groundName = groundName;
-      userData.groundAddress = groundAddress;
+      userData.grounds = grounds || [];
     }
 
+    // Create and save user
     user = new User(userData);
     await user.save();
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.json({ 
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user._id, role: user.role }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: '7d' }
+    );
+
+    // Return response with user info
+    res.status(201).json({ 
       token, 
       user: { 
         id: user._id, 
-        name: user.name, 
+        name: user.fullname, 
         email: user.email,
         role: user.role,
-        playerRoles: user.playerRoles,
-        groundName: user.groundName
+        playerRole: user.playerRole,
+        district: user.district,
+        village: user.village,
+        grounds: user.grounds
       } 
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Server error');
+    console.error('Register error:', err);
+    res.status(500).json({ msg: 'Server error during registration', error: err.message });
   }
 });
 
-// login
+// LOGIN
 router.post('/login', async (req, res) => {
   try {
     const { email, password, role } = req.body;
     
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ msg: 'Invalid credentials' });
-
-    // Check if role matches
-    if (role && user.role !== role) {
-      return res.status(400).json({ msg: 'Invalid role for this account' });
+    // Validate inputs
+    if (!email || !password) {
+      return res.status(400).json({ msg: 'Please provide email and password' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ msg: 'Invalid credentials' });
+    // Find user by email
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      return res.status(400).json({ msg: 'Invalid credentials' });
+    }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    // Check if role matches (if role is provided)
+    if (role && user.role !== role) {
+      return res.status(400).json({ msg: `This account is registered as ${user.role}, not ${role}` });
+    }
+
+    // Verify password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ msg: 'Invalid credentials' });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user._id, role: user.role }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: '7d' }
+    );
+
+    // Return response with user info
     res.json({ 
       token, 
       user: { 
         id: user._id, 
-        name: user.name, 
+        name: user.fullname, 
         email: user.email,
         role: user.role,
-        playerRoles: user.playerRoles,
-        groundName: user.groundName,
+        playerRole: user.playerRole,
         district: user.district,
-        village: user.village
+        village: user.village,
+        grounds: user.grounds
       } 
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Server error');
+    console.error('Login error:', err);
+    res.status(500).json({ msg: 'Server error during login', error: err.message });
   }
 });
 

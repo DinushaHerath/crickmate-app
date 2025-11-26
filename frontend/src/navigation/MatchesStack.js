@@ -20,19 +20,21 @@ export default function MatchesStack() {
             height: 3,
           },
           tabBarLabelStyle: {
-            fontSize: 14,
+            fontSize: 13,
             fontWeight: '600',
             textTransform: 'none',
           },
           tabBarStyle: {
             backgroundColor: Colors.white,
-            elevation: 4,
-            shadowOpacity: 0.1,
-            shadowOffset: { width: 0, height: 2 },
-            shadowRadius: 4,
+            elevation: 2,
+            shadowOpacity: 0.06,
+            shadowOffset: { width: 0, height: 1 },
+            shadowRadius: 2,
+            paddingVertical: 6,
+            marginBottom: 6,
           },
           tabBarItemStyle: {
-            paddingVertical: 12,
+            paddingVertical: 6,
           },
         }}
       >

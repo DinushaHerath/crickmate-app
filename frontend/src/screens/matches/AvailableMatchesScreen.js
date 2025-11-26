@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/theme';
 import { MOCK_TEAMS } from '../../data/mockData';
@@ -10,9 +10,13 @@ export default function AvailableMatchesScreen() {
   const [searchVillage, setSearchVillage] = useState('');
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showTeamModal, setShowTeamModal] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [groundName, setGroundName] = useState('');
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [selectedOwnTeamId, setSelectedOwnTeamId] = useState(null);
 
   const filteredTeams = MOCK_TEAMS.filter(team => {
     const matchesName = team.name.toLowerCase().includes(searchName.toLowerCase());
@@ -26,7 +30,9 @@ export default function AvailableMatchesScreen() {
       alert('Please select date and time');
       return;
     }
-    alert(`Match request sent to ${selectedTeam.name}`);
+    // mark as pending locally
+    if (selectedTeam?.id) setPendingRequests(prev => [...prev, selectedTeam.id]);
+    alert(`Match request sent to ${selectedTeam?.name || 'team'}. Status: Pending`);
     setShowRequestModal(false);
     setSelectedDate('');
     setSelectedTime('');
@@ -38,11 +44,10 @@ export default function AvailableMatchesScreen() {
       style={styles.teamCard}
       onPress={() => {
         setSelectedTeam(item);
-        setShowRequestModal(true);
+        setShowTeamModal(true);
       }}
     >
       <View style={styles.teamHeader}>
-        <Text style={styles.teamLogo}>{item.logo}</Text>
         <View style={styles.teamInfo}>
           <Text style={styles.teamName}>{item.name}</Text>
           <View style={styles.teamMeta}>
@@ -51,7 +56,13 @@ export default function AvailableMatchesScreen() {
           </View>
           <Text style={styles.teamCaptain}>Captain: {item.captain}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={24} color={Colors.textLight} />
+        <View style={{alignItems:'flex-end'}}>
+          {pendingRequests.includes(item.id) ? (
+            <View style={styles.pendingBadge}><Text style={styles.pendingText}>Pending</Text></View>
+          ) : (
+            <Ionicons name="chevron-forward" size={24} color={Colors.textLight} />
+          )}
+        </View>
       </View>
 
       <View style={styles.teamStats}>
@@ -108,6 +119,14 @@ export default function AvailableMatchesScreen() {
         </View>
       </View>
 
+      {/* Schedule / Teams List */}
+      <View style={styles.topActionsRow}>
+        <TouchableOpacity style={styles.scheduleButton} onPress={() => setShowScheduleModal(true)}>
+          <Ionicons name="calendar" size={18} color={Colors.white} />
+          <Text style={styles.scheduleButtonText}>Schedule Match</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Teams List */}
       <FlatList
         data={filteredTeams}
@@ -121,6 +140,43 @@ export default function AvailableMatchesScreen() {
           </View>
         }
       />
+
+      {/* Team Details Modal */}
+      <Modal
+        visible={showTeamModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowTeamModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Team Details</Text>
+              <TouchableOpacity onPress={() => setShowTeamModal(false)}>
+                <Ionicons name="close" size={28} color={Colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            {selectedTeam && (
+              <ScrollView style={{paddingHorizontal:20}}>
+                <Text style={styles.selectedTeamName}>{selectedTeam.name}</Text>
+                <Text style={{color:Colors.textSecondary, marginBottom:8}}>{selectedTeam.district}</Text>
+                <Text style={{marginBottom:8}}>Captain: {selectedTeam.captain}</Text>
+                <Text style={{marginBottom:8}}>Members: {selectedTeam.members}</Text>
+                <Text style={{marginBottom:12}} numberOfLines={4}>{selectedTeam.description || ''}</Text>
+
+                <TouchableOpacity style={styles.submitButton} onPress={() => {
+                  setShowTeamModal(false);
+                  setShowRequestModal(true);
+                }}>
+                  <Ionicons name="send" size={18} color={Colors.white} />
+                  <Text style={styles.submitButtonText}>Invite for Match</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Request Match Modal */}
       <Modal
@@ -188,6 +244,41 @@ export default function AvailableMatchesScreen() {
               <Ionicons name="send" size={20} color={Colors.white} />
               <Text style={styles.submitButtonText}>Send Request</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Schedule Match Modal (choose your team first) */}
+      <Modal
+        visible={showScheduleModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowScheduleModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Schedule Match</Text>
+              <TouchableOpacity onPress={() => setShowScheduleModal(false)}>
+                <Ionicons name="close" size={28} color={Colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{padding:20}}>
+              <Text style={styles.label}>Choose Your Team</Text>
+              {/* list user's teams - using MOCK_TEAMS for demo */}
+              {MOCK_TEAMS.map(t => (
+                <TouchableOpacity key={t.id} style={[styles.teamSelectRow, selectedOwnTeamId === t.id && styles.teamSelectRowActive]} onPress={() => setSelectedOwnTeamId(t.id)}>
+                  <Text style={styles.teamName}>{t.name}</Text>
+                </TouchableOpacity>
+              ))}
+
+              <Text style={[styles.label,{marginTop:16}]}>Now select opponent from list below</Text>
+              <Text style={{color:Colors.textSecondary,marginBottom:8}}>Search opponent by name, district or village</Text>
+              <TouchableOpacity style={styles.submitButton} onPress={() => { setShowScheduleModal(false); }}>
+                <Text style={styles.submitButtonText}>Done</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -277,6 +368,43 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
+  },
+  pendingBadge: {
+    backgroundColor: Colors.accent,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  pendingText: {
+    color: Colors.white,
+    fontWeight: '600',
+  },
+  topActionsRow: {
+    padding: 12,
+    backgroundColor: Colors.background,
+    alignItems: 'flex-end',
+  },
+  scheduleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 8,
+  },
+  scheduleButtonText: {
+    color: Colors.white,
+    fontWeight: '600',
+  },
+  teamSelectRow: {
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: Colors.cardBackground,
+    marginBottom: 8,
+  },
+  teamSelectRowActive: {
+    backgroundColor: Colors.primary,
   },
   statItem: {
     alignItems: 'center',

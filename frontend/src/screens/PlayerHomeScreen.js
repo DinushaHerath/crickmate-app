@@ -1,15 +1,17 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Modal } from 'react-native';
 import { useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/theme';
-import { MOCK_TEAMS, MOCK_MATCHES, getUpcomingMatches } from '../data/mockData';
+import { MOCK_TEAMS, MOCK_MATCHES, getUpcomingMatches, MOCK_GROUNDS } from '../data/mockData';
 
 const { width } = Dimensions.get('window');
 
 export default function PlayerHomeScreen({ navigation }) {
   const user = useSelector((state) => state.auth.user);
   const upcomingMatches = getUpcomingMatches().slice(0, 3);
+  const [showGroundModal, setShowGroundModal] = React.useState(false);
+  const [selectedGround, setSelectedGround] = React.useState(null);
 
   return (
     <View style={styles.container}>
@@ -80,7 +82,13 @@ export default function PlayerHomeScreen({ navigation }) {
               </View>
               <View style={styles.matchInfoItem}>
                 <Ionicons name="location-outline" size={14} color={Colors.textSecondary} />
-                <Text style={styles.matchInfo}>{match.ground}</Text>
+                <TouchableOpacity onPress={() => {
+                  const g = MOCK_GROUNDS.find(gr => gr.name === match.ground);
+                  setSelectedGround(g || { name: match.ground });
+                  setShowGroundModal(true);
+                }}>
+                  <Text style={[styles.matchInfo, {textDecorationLine:'underline'}]}>{match.ground}</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </TouchableOpacity>
@@ -146,6 +154,29 @@ export default function PlayerHomeScreen({ navigation }) {
         </View>
       </View>
       </ScrollView>
+      <Modal visible={showGroundModal} transparent animationType="slide" onRequestClose={() => setShowGroundModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{selectedGround?.name}</Text>
+              <TouchableOpacity onPress={() => setShowGroundModal(false)}>
+                <Ionicons name="close" size={28} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            {selectedGround && (
+              <View style={{padding:20}}>
+                <Text style={{color:Colors.textSecondary, marginBottom:8}}>{selectedGround.address || ''}</Text>
+                <Text style={{marginBottom:8}}>District: {selectedGround.district || ''}</Text>
+                <Text style={{marginBottom:8}}>Price/hr: LKR {selectedGround.pricePerHour || '-'}</Text>
+                <Text style={{marginBottom:8}}>Contact: {selectedGround.contact || '-'}</Text>
+                <TouchableOpacity style={[styles.createTeamButton, {marginTop:12}]} onPress={() => { setShowGroundModal(false); navigation.navigate('Grounds'); }}>
+                  <Text style={styles.createTeamText}>Open Grounds</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -396,8 +427,33 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   joinTeamText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: Colors.primary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 40,
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.textPrimary,
   },
 });

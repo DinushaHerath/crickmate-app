@@ -78,7 +78,7 @@ export default function LandingScreen({ navigation }) {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Join the cricket revolution today! 🚀</Text>
+          <Text style={styles.footerText}>Designed & Developed by Dinusha Herath</Text>
         </View>
       </LinearGradient>
     </ScrollView>

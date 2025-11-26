@@ -19,23 +19,15 @@ export default function LoginScreen({ navigation }) {
       return;
     }
 
-    // For now, skip backend and navigate directly based on role
-    if (role === 'player') {
-      dispatch(setCredentials({ user: { role: 'player', email, name: 'Player' }, token: 'mock-token' }));
-    } else if (role === 'ground_owner') {
-      dispatch(setCredentials({ user: { role: 'ground_owner', email, name: 'Ground Owner' }, token: 'mock-token' }));
+    try {
+      setLoading(true);
+      const response = await login({ email, password, role });
+      dispatch(setCredentials({ user: response.data.user, token: response.data.token }));
+    } catch (error) {
+      Alert.alert('Login Failed', error.response?.data?.msg || error.message || 'An error occurred');
+    } finally {
+      setLoading(false);
     }
-
-    // Uncomment when backend is ready:
-    // try {
-    //   setLoading(true);
-    //   const response = await login({ email, password, role });
-    //   dispatch(setCredentials(response.data));
-    // } catch (error) {
-    //   Alert.alert('Error', error.message || 'Login failed');
-    // } finally {
-    //   setLoading(false);
-    // }
   };
 
   return (
