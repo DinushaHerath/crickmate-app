@@ -201,7 +201,9 @@ export default function CreateTeamScreen({ navigation }) {
               <Ionicons name="person" size={24} color={Colors.white} />
             </View>
             <View style={styles.playerInfo}>
+            <TouchableOpacity onPress={() => navigation.navigate('PlayerProfile', { playerId: item.id })}>
               <Text style={styles.playerName}>{item.name}</Text>
+            </TouchableOpacity>
               <View style={styles.playerMeta}>
                 <Ionicons name="location-outline" size={12} color={Colors.textSecondary} />
                 <Text style={styles.playerLocation}>{item.district}</Text>
@@ -212,7 +214,7 @@ export default function CreateTeamScreen({ navigation }) {
               style={styles.inviteButton}
               onPress={() => handlePlayerSelect(item)}
             >
-              <Ionicons name="add-circle" size={24} color={Colors.accent} />
+              <Ionicons name="add-circle" size={20} color={Colors.accent} />
             </TouchableOpacity>
           </TouchableOpacity>
         )}

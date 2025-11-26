@@ -7,11 +7,11 @@ import { register } from '../api/auth';
 import { Colors } from '../../constants/theme';
 
 const PLAYER_ROLES = [
-  { label: 'Batsman', value: 'batsman', icon: 'baseball' },
-  { label: 'Bowler', value: 'bowler', icon: 'flash' },
-  { label: 'All-Rounder', value: 'all_rounder', icon: 'star' },
-  { label: 'Wicket-keeper', value: 'wicket_keeper', icon: 'hand-left' },
-  { label: 'Fielder', value: 'fielder', icon: 'location' }
+  { label: 'Batsman', value: 'Batsman', icon: 'baseball' },
+  { label: 'Bowler', value: 'Bowler', icon: 'flash' },
+  { label: 'All-Rounder', value: 'All-Rounder', icon: 'star' },
+  { label: 'Wicket-keeper', value: 'Wicket-keeper', icon: 'hand-left' },
+  { label: 'Fielder', value: 'Fielder', icon: 'location' }
 ];
 
 export default function RegisterScreen({ navigation }) {
@@ -23,22 +23,13 @@ export default function RegisterScreen({ navigation }) {
   // Player fields
   const [district, setDistrict] = useState('');
   const [village, setVillage] = useState('');
-  const [selectedPlayerRoles, setSelectedPlayerRoles] = useState([]);
+  const [selectedPlayerRole, setSelectedPlayerRole] = useState(''); // Single role
   
   // Ground owner fields
-  const [groundName, setGroundName] = useState('');
-  const [groundAddress, setGroundAddress] = useState('');
+  const [grounds, setGrounds] = useState([]);
   
   const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
-
-  const togglePlayerRole = (roleValue) => {
-    if (selectedPlayerRoles.includes(roleValue)) {
-      setSelectedPlayerRoles(selectedPlayerRoles.filter(r => r !== roleValue));
-    } else {
-      setSelectedPlayerRoles([...selectedPlayerRoles, roleValue]);
-    }
-  };
 
   const handleRegister = async () => {
     if (!name || !email || !password || !role) {
@@ -46,38 +37,41 @@ export default function RegisterScreen({ navigation }) {
       return;
     }
 
-    if (role === 'player' && selectedPlayerRoles.length === 0) {
-      Alert.alert('Error', 'Please select at least one player role');
+    if (role === 'player' && !selectedPlayerRole) {
+      Alert.alert('Error', 'Please select a player role');
       return;
     }
 
-    if (role === 'ground_owner' && (!groundName || !groundAddress)) {
-      Alert.alert('Error', 'Please provide ground name and address');
+    if (role === 'player' && (!district || !village)) {
+      Alert.alert('Error', 'Please provide district and village');
       return;
     }
 
     try {
       setLoading(true);
       const payload = {
-        name,
+        fullname: name,
         email,
         password,
-        role
+        role,
+        district
       };
 
       if (role === 'player') {
-        payload.playerRoles = selectedPlayerRoles;
-        payload.district = district;
+        payload.playerRole = selectedPlayerRole;
         payload.village = village;
       } else {
-        payload.groundName = groundName;
-        payload.groundAddress = groundAddress;
+        payload.grounds = grounds;
       }
 
+      console.log('Registering with payload:', payload);
       const response = await register(payload);
-      dispatch(setCredentials(response.data));
+      console.log('Registration successful:', response.data);
+      dispatch(setCredentials({ user: response.data.user, token: response.data.token }));
     } catch (error) {
-      Alert.alert('Error', error.message || 'Registration failed');
+      console.error('Registration error:', error);
+      console.error('Error response:', error.response);
+      Alert.alert('Registration Failed', error.response?.data?.msg || error.message || 'Network error - check if backend is running');
     } finally {
       setLoading(false);
     }
@@ -167,29 +161,29 @@ export default function RegisterScreen({ navigation }) {
           {/* Player-specific fields */}
           {role === 'player' && (
             <>
-              <Text style={styles.sectionTitle}>Select Player Roles *</Text>
+              <Text style={styles.sectionTitle}>Select Player Role *</Text>
               <View style={styles.checkboxContainer}>
                 {PLAYER_ROLES.map((playerRole) => (
                   <TouchableOpacity
                     key={playerRole.value}
                     style={[
                       styles.checkbox,
-                      selectedPlayerRoles.includes(playerRole.value) && styles.checkboxSelected
+                      selectedPlayerRole === playerRole.value && styles.checkboxSelected
                     ]}
-                    onPress={() => togglePlayerRole(playerRole.value)}
+                    onPress={() => setSelectedPlayerRole(playerRole.value)}
                   >
                     <Ionicons 
                       name={playerRole.icon} 
                       size={24} 
-                      color={selectedPlayerRoles.includes(playerRole.value) ? Colors.primary : Colors.textSecondary} 
+                      color={selectedPlayerRole === playerRole.value ? Colors.primary : Colors.textSecondary} 
                     />
                     <Text style={[
                       styles.checkboxText,
-                      selectedPlayerRoles.includes(playerRole.value) && styles.checkboxTextSelected
+                      selectedPlayerRole === playerRole.value && styles.checkboxTextSelected
                     ]}>
                       {playerRole.label}
                     </Text>
-                    {selectedPlayerRoles.includes(playerRole.value) && (
+                    {selectedPlayerRole === playerRole.value && (
                       <Ionicons name="checkmark-circle" size={20} color={Colors.accent} style={styles.checkmark} />
                     )}
                   </TouchableOpacity>
@@ -200,7 +194,7 @@ export default function RegisterScreen({ navigation }) {
                 <Ionicons name="location-outline" size={20} color={Colors.textSecondary} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="District"
+                  placeholder="District *"
                   placeholderTextColor={Colors.textLight}
                   value={district}
                   onChangeText={setDistrict}
@@ -211,7 +205,7 @@ export default function RegisterScreen({ navigation }) {
                 <Ionicons name="map-outline" size={20} color={Colors.textSecondary} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Village"
+                  placeholder="Village *"
                   placeholderTextColor={Colors.textLight}
                   value={village}
                   onChangeText={setVillage}
@@ -224,27 +218,16 @@ export default function RegisterScreen({ navigation }) {
           {role === 'ground_owner' && (
             <>
               <View style={styles.inputWrapper}>
-                <Ionicons name="business-outline" size={20} color={Colors.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ground Name"
-                  placeholderTextColor={Colors.textLight}
-                  value={groundName}
-                  onChangeText={setGroundName}
-                />
-              </View>
-
-              <View style={styles.inputWrapper}>
                 <Ionicons name="location-outline" size={20} color={Colors.textSecondary} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Ground Address"
+                  placeholder="District *"
                   placeholderTextColor={Colors.textLight}
-                  value={groundAddress}
-                  onChangeText={setGroundAddress}
-                  multiline
+                  value={district}
+                  onChangeText={setDistrict}
                 />
               </View>
+              <Text style={styles.helperText}>You can add ground details after registration</Text>
             </>
           )}
 
