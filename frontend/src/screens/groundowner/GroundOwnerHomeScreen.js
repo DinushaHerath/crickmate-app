@@ -1,9 +1,17 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSelector } from 'react-redux';
 import { Colors } from '../../../constants/theme';
+import { getMyGround } from '../../api/grounds';
 
 export default function GroundOwnerHomeScreen({ navigation }) {
+  const { token } = useSelector((state) => state.auth);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [groundName, setGroundName] = useState('My Ground');
+  const [groundData, setGroundData] = useState(null);
+  
   const groundStats = {
     todayBookings: 5,
     weekRevenue: 45000,
@@ -40,13 +48,64 @@ export default function GroundOwnerHomeScreen({ navigation }) {
 
   const pendingRequests = 12;
 
+  useEffect(() => {
+    fetchGroundData();
+  }, []);
+
+  const fetchGroundData = async () => {
+    try {
+      const response = await getMyGround(token);
+      console.log('Ground data response:', response);
+      
+      if (response.success && response.ground) {
+        setGroundName(response.ground.groundName || 'My Ground');
+        setGroundData(response.ground);
+      } else {
+        console.log('No ground found, user should set up ground profile');
+      }
+    } catch (error) {
+      console.error('Error fetching ground data:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchGroundData();
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={{ marginTop: 10, color: Colors.textSecondary }}>Loading...</Text>
+      </View>
+    );
+  }
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
+      }
+    >
       {/* Header */}
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Welcome Back!</Text>
-          <Text style={styles.groundName}>Royal Cricket Ground</Text>
+          <Text style={styles.groundName}>{groundName}</Text>
+          {!groundData && (
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('Profile')}
+              style={styles.setupPrompt}
+            >
+              <Ionicons name="information-circle-outline" size={16} color={Colors.white} />
+              <Text style={styles.setupPromptText}>Complete your ground profile</Text>
+            </TouchableOpacity>
+          )}
         </View>
         <TouchableOpacity style={styles.notificationButton}>
           <Ionicons name="notifications" size={28} color={Colors.white} />
@@ -305,5 +364,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: Colors.primary,
+  },
+  setupPrompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 15,
+    alignSelf: 'flex-start',
+  },
+  setupPromptText: {
+    fontSize: 12,
+    color: Colors.white,
+    fontWeight: '500',
   },
 });

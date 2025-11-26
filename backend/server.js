@@ -46,6 +46,7 @@ const matchRequestRoutes = require('./routes/matchRequests');
 const profileRoutes = require('./routes/profile');
 const teamJoinRequestRoutes = require('./routes/teamJoinRequests');
 const homeStatsRoutes = require('./routes/homeStats');
+const groundRoutes = require('./routes/grounds');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/matches', matchRoutes);
@@ -55,6 +56,7 @@ app.use('/api/match-requests', matchRequestRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/team-join-requests', teamJoinRequestRoutes);
 app.use('/api/home-stats', homeStatsRoutes);
+app.use('/api/grounds', groundRoutes);
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {
