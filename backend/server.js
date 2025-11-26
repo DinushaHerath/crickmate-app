@@ -41,10 +41,12 @@ app.get('/', (req, res) => res.send('CrickMate API running'));
 const authRoutes = require('./routes/auth');
 const matchRoutes = require('./routes/matches');
 const testRoutes = require('./routes/test');
+const teamRoutes = require('./routes/teams');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/test', testRoutes);
+app.use('/api/teams', teamRoutes);
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {

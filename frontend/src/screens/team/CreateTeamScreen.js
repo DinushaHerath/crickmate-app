@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, FlatList, Modal, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, FlatList, Modal, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/theme';
-import { MOCK_PLAYERS } from '../../data/mockData';
+import { useSelector } from 'react-redux';
+import { getNearbyPlayers, createTeam } from '../../api/teams';
 
 const PLAYER_ROLES = [
   'Batsman',
@@ -14,38 +15,48 @@ const PLAYER_ROLES = [
 
 export default function CreateTeamScreen({ navigation }) {
   const [step, setStep] = useState(1); // 1: Team Info, 2: Add Players, 3: Review
+  const { token, user } = useSelector((state) => state.auth);
   
   // Team Info
   const [teamName, setTeamName] = useState('');
-  const [district, setDistrict] = useState('');
+  const [district, setDistrict] = useState(user?.district || '');
   const [village, setVillage] = useState('');
   
   // Player Search
   const [searchName, setSearchName] = useState('');
-  const [searchDistrict, setSearchDistrict] = useState('');
-  const [searchVillage, setSearchVillage] = useState('');
+  const [nearbyPlayers, setNearbyPlayers] = useState([]);
+  const [loadingPlayers, setLoadingPlayers] = useState(false);
   const [selectedPlayers, setSelectedPlayers] = useState([]);
   const [showPlayerModal, setShowPlayerModal] = useState(false);
   const [currentPlayer, setCurrentPlayer] = useState(null);
-  const [selectedRole, setSelectedRole] = useState('');
-  
-  // Mock created teams and invites
-  const [createdTeams, setCreatedTeams] = useState([
-    {
-      id: '1',
-      name: 'Thunder Strikers',
-      district: 'Colombo',
-      members: 12,
-      pendingInvites: 3,
-      acceptedInvites: 9
-    }
-  ]);
+  const [creating, setCreating] = useState(false);
 
-  const filteredPlayers = MOCK_PLAYERS.filter(player => {
-    const matchesName = player.name.toLowerCase().includes(searchName.toLowerCase());
-    const matchesDistrict = searchDistrict === '' || player.district?.toLowerCase().includes(searchDistrict.toLowerCase());
-    const matchesVillage = searchVillage === '' || player.village?.toLowerCase().includes(searchVillage.toLowerCase());
-    return matchesName && matchesDistrict && matchesVillage;
+  // Fetch nearby players when moving to step 2
+  useEffect(() => {
+    if (step === 2 && district) {
+      fetchNearbyPlayers();
+    }
+  }, [step, district]);
+
+  const fetchNearbyPlayers = async () => {
+    try {
+      setLoadingPlayers(true);
+      console.log('Fetching nearby players for district:', district);
+      const data = await getNearbyPlayers(district, token);
+      console.log('Nearby players fetched:', data.players.length);
+      setNearbyPlayers(data.players);
+    } catch (error) {
+      console.error('Error fetching nearby players:', error);
+      Alert.alert('Error', 'Failed to load nearby players');
+    } finally {
+      setLoadingPlayers(false);
+    }
+  };
+
+  const filteredPlayers = nearbyPlayers.filter(player => {
+    const matchesName = player.fullname.toLowerCase().includes(searchName.toLowerCase());
+    const alreadySelected = selectedPlayers.some(p => p._id === player._id);
+    return matchesName && !alreadySelected;
   });
 
   const handlePlayerSelect = (player) => {
@@ -53,33 +64,47 @@ export default function CreateTeamScreen({ navigation }) {
     setShowPlayerModal(true);
   };
 
-  const handleSendInvite = () => {
-    if (!selectedRole) {
-      Alert.alert('Error', 'Please select a role for the player');
-      return;
+  const handleAddPlayer = () => {
+    if (currentPlayer) {
+      setSelectedPlayers([...selectedPlayers, currentPlayer]);
+      setShowPlayerModal(false);
+      setCurrentPlayer(null);
     }
-    
-    const invitation = {
-      playerId: currentPlayer.id,
-      playerName: currentPlayer.name,
-      role: selectedRole
-    };
-    
-    setSelectedPlayers([...selectedPlayers, invitation]);
-    Alert.alert('Success', `Invitation sent to ${currentPlayer.name} as ${selectedRole}`);
-    setShowPlayerModal(false);
-    setSelectedRole('');
-    setCurrentPlayer(null);
   };
 
-  const handleCreateTeam = () => {
-    if (!teamName || !district) {
-      Alert.alert('Error', 'Please fill in team name and district');
+  const handleRemovePlayer = (playerId) => {
+    setSelectedPlayers(selectedPlayers.filter(p => p._id !== playerId));
+  };
+
+  const handleCreateTeam = async () => {
+    if (!teamName || !district || !village) {
+      Alert.alert('Error', 'Please fill in team name, district, and village');
       return;
     }
-    
-    Alert.alert('Success', 'Team created successfully!');
-    navigation.goBack();
+
+    try {
+      setCreating(true);
+      console.log('Creating team:', { teamName, district, village, players: selectedPlayers.length });
+      
+      const teamData = {
+        name: teamName,
+        district,
+        village,
+        selectedPlayerIds: selectedPlayers.map(p => p._id)
+      };
+
+      const response = await createTeam(teamData, token);
+      console.log('Team created:', response.team._id);
+      
+      Alert.alert('Success', `Team "${teamName}" created successfully!`, [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]);
+    } catch (error) {
+      console.error('Error creating team:', error);
+      Alert.alert('Error', error.response?.data?.message || 'Failed to create team');
+    } finally {
+      setCreating(false);
+    }
   };
 
   const renderStep1 = () => (
@@ -128,7 +153,8 @@ export default function CreateTeamScreen({ navigation }) {
 
   const renderStep2 = () => (
     <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>Add Players</Text>
+      <Text style={styles.stepTitle}>Add Players (Optional)</Text>
+      <Text style={styles.stepSubtitle}>Invite nearby players from {district}</Text>
       
       {/* Search Filters */}
       <View style={styles.searchContainer}>
@@ -142,30 +168,6 @@ export default function CreateTeamScreen({ navigation }) {
             onChangeText={setSearchName}
           />
         </View>
-        
-        <View style={styles.searchRow}>
-          <View style={[styles.searchInputWrapper, styles.halfWidth]}>
-            <Ionicons name="location" size={18} color={Colors.textSecondary} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="District..."
-              placeholderTextColor={Colors.textLight}
-              value={searchDistrict}
-              onChangeText={setSearchDistrict}
-            />
-          </View>
-          
-          <View style={[styles.searchInputWrapper, styles.halfWidth]}>
-            <Ionicons name="map" size={18} color={Colors.textSecondary} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Village..."
-              placeholderTextColor={Colors.textLight}
-              value={searchVillage}
-              onChangeText={setSearchVillage}
-            />
-          </View>
-        </View>
       </View>
 
       {/* Selected Players */}
@@ -174,13 +176,11 @@ export default function CreateTeamScreen({ navigation }) {
           <Text style={styles.sectionTitle}>
             Selected Players ({selectedPlayers.length})
           </Text>
-          {selectedPlayers.map((invite, index) => (
-            <View key={index} style={styles.selectedPlayerCard}>
-              <Text style={styles.selectedPlayerName}>{invite.playerName}</Text>
-              <Text style={styles.selectedPlayerRole}>{invite.role}</Text>
-              <TouchableOpacity
-                onPress={() => setSelectedPlayers(selectedPlayers.filter((_, i) => i !== index))}
-              >
+          {selectedPlayers.map((player) => (
+            <View key={player._id} style={styles.selectedPlayerCard}>
+              <Text style={styles.selectedPlayerName}>{player.fullname}</Text>
+              <Text style={styles.selectedPlayerRole}>{player.playerRole}</Text>
+              <TouchableOpacity onPress={() => handleRemovePlayer(player._id)}>
                 <Ionicons name="close-circle" size={24} color={Colors.error} />
               </TouchableOpacity>
             </View>
@@ -189,37 +189,47 @@ export default function CreateTeamScreen({ navigation }) {
       )}
 
       {/* Players List */}
-      <FlatList
-        data={filteredPlayers}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TouchableOpacity 
-            style={styles.playerCard}
-            onPress={() => handlePlayerSelect(item)}
-          >
-            <View style={styles.avatar}>
-              <Ionicons name="person" size={24} color={Colors.white} />
-            </View>
-            <View style={styles.playerInfo}>
-            <TouchableOpacity onPress={() => navigation.navigate('PlayerProfile', { playerId: item.id })}>
-              <Text style={styles.playerName}>{item.name}</Text>
-            </TouchableOpacity>
-              <View style={styles.playerMeta}>
-                <Ionicons name="location-outline" size={12} color={Colors.textSecondary} />
-                <Text style={styles.playerLocation}>{item.district}</Text>
-              </View>
-              <Text style={styles.playerRole}>{item.position}</Text>
-            </View>
+      {loadingPlayers ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Loading nearby players...</Text>
+        </View>
+      ) : filteredPlayers.length > 0 ? (
+        <FlatList
+          data={filteredPlayers}
+          keyExtractor={(item) => item._id}
+          renderItem={({ item }) => (
             <TouchableOpacity 
-              style={styles.inviteButton}
+              style={styles.playerCard}
               onPress={() => handlePlayerSelect(item)}
             >
-              <Ionicons name="add-circle" size={20} color={Colors.accent} />
+              <View style={styles.avatar}>
+                <Ionicons name="person" size={24} color={Colors.white} />
+              </View>
+              <View style={styles.playerInfo}>
+                <Text style={styles.playerName}>{item.fullname}</Text>
+                <View style={styles.playerMeta}>
+                  <Ionicons name="location-outline" size={12} color={Colors.textSecondary} />
+                  <Text style={styles.playerLocation}>{item.village || item.district}</Text>
+                </View>
+                <Text style={styles.playerRole}>{item.playerRole}</Text>
+              </View>
+              <TouchableOpacity 
+                style={styles.inviteButton}
+                onPress={() => handlePlayerSelect(item)}
+              >
+                <Ionicons name="add-circle" size={20} color={Colors.accent} />
+              </TouchableOpacity>
             </TouchableOpacity>
-          </TouchableOpacity>
-        )}
-        style={styles.playersList}
-      />
+          )}
+          style={styles.playersList}
+        />
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="people-outline" size={60} color={Colors.textLight} />
+          <Text style={styles.emptyText}>No nearby players found</Text>
+        </View>
+      )}
 
       <View style={styles.stepButtons}>
         <TouchableOpacity style={styles.backButton} onPress={() => setStep(1)}>
@@ -249,16 +259,25 @@ export default function CreateTeamScreen({ navigation }) {
         <Text style={styles.reviewValue}>{district}</Text>
       </View>
 
-      {village && (
-        <View style={styles.reviewCard}>
-          <Text style={styles.reviewLabel}>Village</Text>
-          <Text style={styles.reviewValue}>{village}</Text>
-        </View>
-      )}
+      <View style={styles.reviewCard}>
+        <Text style={styles.reviewLabel}>Village</Text>
+        <Text style={styles.reviewValue}>{village}</Text>
+      </View>
 
       <View style={styles.reviewCard}>
-        <Text style={styles.reviewLabel}>Players Invited</Text>
-        <Text style={styles.reviewValue}>{selectedPlayers.length} players</Text>
+        <Text style={styles.reviewLabel}>Players to Invite</Text>
+        <Text style={styles.reviewValue}>
+          {selectedPlayers.length} player{selectedPlayers.length !== 1 ? 's' : ''}
+        </Text>
+        {selectedPlayers.length > 0 && (
+          <View style={styles.reviewPlayersList}>
+            {selectedPlayers.map((player, index) => (
+              <Text key={player._id} style={styles.reviewPlayerName}>
+                {index + 1}. {player.fullname} ({player.playerRole})
+              </Text>
+            ))}
+          </View>
+        )}
       </View>
 
       <View style={styles.stepButtons}>
@@ -267,41 +286,20 @@ export default function CreateTeamScreen({ navigation }) {
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.createButton} onPress={handleCreateTeam}>
-          <Ionicons name="checkmark-circle" size={20} color={Colors.white} />
-          <Text style={styles.buttonText}>Create Team</Text>
+        <TouchableOpacity 
+          style={[styles.createButton, creating && styles.disabledButton]} 
+          onPress={handleCreateTeam}
+          disabled={creating}
+        >
+          {creating ? (
+            <ActivityIndicator size="small" color={Colors.white} />
+          ) : (
+            <>
+              <Ionicons name="checkmark-circle" size={20} color={Colors.white} />
+              <Text style={styles.buttonText}>Create Team</Text>
+            </>
+          )}
         </TouchableOpacity>
-      </View>
-
-      {/* My Teams Section */}
-      <View style={styles.myTeamsSection}>
-        <Text style={styles.sectionTitle}>My Teams</Text>
-        {createdTeams.map((team) => (
-          <View key={team.id} style={styles.teamCard}>
-            <View style={styles.teamHeader}>
-              <Ionicons name="trophy" size={32} color={Colors.primary} />
-              <View style={styles.teamInfo}>
-                <Text style={styles.teamName}>{team.name}</Text>
-                <Text style={styles.teamDistrict}>{team.district}</Text>
-              </View>
-            </View>
-            
-            <View style={styles.teamStats}>
-              <View style={styles.statItem}>
-                <Ionicons name="people" size={20} color={Colors.primary} />
-                <Text style={styles.statText}>{team.members} Members</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Ionicons name="time" size={20} color={Colors.secondary} />
-                <Text style={styles.statText}>{team.pendingInvites} Pending</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Ionicons name="checkmark-circle" size={20} color={Colors.accent} />
-                <Text style={styles.statText}>{team.acceptedInvites} Accepted</Text>
-              </View>
-            </View>
-          </View>
-        ))}
       </View>
     </ScrollView>
   );
@@ -327,7 +325,7 @@ export default function CreateTeamScreen({ navigation }) {
       {step === 2 && renderStep2()}
       {step === 3 && renderStep3()}
 
-      {/* Role Selection Modal */}
+      {/* Player Profile Modal */}
       <Modal
         visible={showPlayerModal}
         transparent
@@ -337,44 +335,56 @@ export default function CreateTeamScreen({ navigation }) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Role</Text>
+              <Text style={styles.modalTitle}>Player Profile</Text>
               <TouchableOpacity onPress={() => setShowPlayerModal(false)}>
                 <Ionicons name="close" size={28} color={Colors.textPrimary} />
               </TouchableOpacity>
             </View>
 
             {currentPlayer && (
-              <View style={styles.playerPreview}>
-                <Text style={styles.playerPreviewName}>{currentPlayer.name}</Text>
-                <Text style={styles.playerPreviewPosition}>{currentPlayer.position}</Text>
+              <View style={styles.playerProfileCard}>
+                <View style={styles.profileAvatar}>
+                  <Ionicons name="person" size={48} color={Colors.white} />
+                </View>
+                <Text style={styles.profileName}>{currentPlayer.fullname}</Text>
+                <Text style={styles.profileRole}>{currentPlayer.playerRole}</Text>
+                <View style={styles.profileLocation}>
+                  <Ionicons name="location-outline" size={16} color={Colors.textSecondary} />
+                  <Text style={styles.profileLocationText}>
+                    {currentPlayer.village}, {currentPlayer.district}
+                  </Text>
+                </View>
+                
+                {currentPlayer.profile ? (
+                  <View style={styles.profileStats}>
+                    <Text style={styles.profileSectionTitle}>Stats</Text>
+                    <View style={styles.statsRow}>
+                      <View style={styles.statBox}>
+                        <Text style={styles.statValue}>{currentPlayer.profile.matchesPlayed || 0}</Text>
+                        <Text style={styles.statLabel}>Matches</Text>
+                      </View>
+                      <View style={styles.statBox}>
+                        <Text style={styles.statValue}>{currentPlayer.profile.totalRuns || 0}</Text>
+                        <Text style={styles.statLabel}>Runs</Text>
+                      </View>
+                      <View style={styles.statBox}>
+                        <Text style={styles.statValue}>{currentPlayer.profile.totalWickets || 0}</Text>
+                        <Text style={styles.statLabel}>Wickets</Text>
+                      </View>
+                    </View>
+                  </View>
+                ) : (
+                  <Text style={styles.noProfileText}>No profile data available</Text>
+                )}
               </View>
             )}
 
-            <Text style={styles.modalLabel}>Select role for this player:</Text>
-            {PLAYER_ROLES.map((role) => (
-              <TouchableOpacity
-                key={role}
-                style={[
-                  styles.roleOption,
-                  selectedRole === role && styles.roleOptionSelected
-                ]}
-                onPress={() => setSelectedRole(role)}
-              >
-                <Text style={[
-                  styles.roleOptionText,
-                  selectedRole === role && styles.roleOptionTextSelected
-                ]}>
-                  {role}
-                </Text>
-                {selectedRole === role && (
-                  <Ionicons name="checkmark-circle" size={24} color={Colors.accent} />
-                )}
-              </TouchableOpacity>
-            ))}
-
-            <TouchableOpacity style={styles.sendInviteButton} onPress={handleSendInvite}>
-              <Ionicons name="send" size={20} color={Colors.white} />
-              <Text style={styles.buttonText}>Send Invitation</Text>
+            <TouchableOpacity
+              style={styles.addPlayerButton}
+              onPress={handleAddPlayer}
+            >
+              <Ionicons name="add-circle" size={20} color={Colors.white} />
+              <Text style={styles.addPlayerButtonText}>Add to Team</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -435,6 +445,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: Colors.textPrimary,
+    marginBottom: 8,
+  },
+  stepSubtitle: {
+    fontSize: 14,
+    color: Colors.textSecondary,
     marginBottom: 20,
   },
   inputWrapper: {
@@ -627,6 +642,42 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.textPrimary,
   },
+  reviewPlayersList: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  reviewPlayerName: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    marginBottom: 4,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    marginTop: 15,
+    fontSize: 16,
+    color: Colors.textSecondary,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
   myTeamsSection: {
     marginTop: 30,
   },
@@ -682,7 +733,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    maxHeight: '70%',
+    maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -694,6 +745,89 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: Colors.textPrimary,
+  },
+  playerProfileCard: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  profileAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  profileName: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: Colors.textPrimary,
+    marginBottom: 5,
+  },
+  profileRole: {
+    fontSize: 16,
+    color: Colors.primary,
+    marginBottom: 8,
+  },
+  profileLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  profileLocationText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  profileStats: {
+    width: '100%',
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 8,
+  },
+  profileSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginBottom: 12,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  statBox: {
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.primary,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 4,
+  },
+  noProfileText: {
+    fontSize: 14,
+    color: Colors.textLight,
+    fontStyle: 'italic',
+    marginTop: 15,
+  },
+  addPlayerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.accent,
+    padding: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  addPlayerButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.white,
   },
   playerPreview: {
     backgroundColor: Colors.cardBackground,
