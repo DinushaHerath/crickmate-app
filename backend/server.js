@@ -37,9 +37,14 @@ mongoose.connect(MONGO)
 
 app.get('/', (req, res) => res.send('CrickMate API running'));
 
-// Import routes (will create later)
+// Import routes
 const authRoutes = require('./routes/auth');
+const matchRoutes = require('./routes/matches');
+const testRoutes = require('./routes/test');
+
 app.use('/api/auth', authRoutes);
+app.use('/api/matches', matchRoutes);
+app.use('/api/test', testRoutes);
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {
