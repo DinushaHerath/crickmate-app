@@ -1,84 +1,108 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, ScrollView } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/theme';
-import { MOCK_TEAMS } from '../data/mockData';
+import { useSelector } from 'react-redux';
+import { getMyTeams } from '../api/teams';
 
 export default function TeamScreen({ navigation }) {
-  // Mock data for user's teams
-  const myCreatedTeams = [
-    {
-      id: '1',
-      name: 'Thunder Strikers',
-      logo: '⚡',
-      district: 'Colombo',
-      role: 'Captain',
-      members: 12,
-      matches: 15,
-      wins: 10,
-      isCreator: true
-    },
-    {
-      id: '2',
-      name: 'Royal Kings',
-      logo: '👑',
-      district: 'Kandy',
-      role: 'All-Rounder',
-      members: 11,
-      matches: 8,
-      wins: 5,
-      isCreator: false
+  const [teams, setTeams] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const { token, user } = useSelector((state) => state.auth);
+
+  const fetchTeams = async () => {
+    try {
+      console.log('Fetching teams for user:', user?.id);
+      const data = await getMyTeams(token);
+      console.log('Teams fetched:', data.teams.length);
+      setTeams(data.teams);
+    } catch (error) {
+      console.error('Error fetching teams:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  ];
+  };
 
-  const renderTeam = ({ item }) => (
-    <View style={styles.teamCard}>
-      <View style={styles.teamHeader}>
-        <View style={styles.teamIconContainer}>
-          <Ionicons name="people" size={28} color={Colors.primary} />
-        </View>
-        <View style={styles.teamInfo}>
-          <Text style={styles.teamName}>{item.name}</Text>
-          <View style={styles.teamMeta}>
-            <Ionicons name="location-outline" size={14} color={Colors.textSecondary} />
-            <Text style={styles.teamDistrict}>{item.district}</Text>
+  useEffect(() => {
+    if (token) {
+      fetchTeams();
+    }
+  }, [token]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchTeams();
+  }, [token]);
+
+  const calculateWinRate = (team) => {
+    if (team.matchesPlayed === 0) return 0;
+    return Math.round((team.winMatches / team.matchesPlayed) * 100);
+  };
+
+  const isTeamCaptain = (team) => {
+    return team.captain?._id === user?.id;
+  };
+
+  const renderTeam = ({ item }) => {
+    const winRate = calculateWinRate(item);
+    const isCaptain = isTeamCaptain(item);
+    
+    return (
+      <View style={styles.teamCard}>
+        <View style={styles.teamHeader}>
+          <View style={styles.teamIconContainer}>
+            <Ionicons name="people" size={28} color={Colors.primary} />
           </View>
-          <View style={styles.roleContainer}>
-            {item.isCreator && (
-              <View style={styles.creatorBadge}>
-                <Ionicons name="star" size={12} color={Colors.secondary} />
-                <Text style={styles.creatorText}>Creator</Text>
-              </View>
-            )}
-            <Text style={styles.teamRole}>{item.role}</Text>
+          <View style={styles.teamInfo}>
+            <Text style={styles.teamName}>{item.name}</Text>
+            <View style={styles.teamMeta}>
+              <Ionicons name="location-outline" size={14} color={Colors.textSecondary} />
+              <Text style={styles.teamDistrict}>{item.district} - {item.village}</Text>
+            </View>
+            <View style={styles.roleContainer}>
+              {isCaptain && (
+                <View style={styles.creatorBadge}>
+                  <Ionicons name="star" size={12} color={Colors.secondary} />
+                  <Text style={styles.creatorText}>Captain</Text>
+                </View>
+              )}
+              <Text style={styles.teamRole}>{item.captain?.playerRole || 'Member'}</Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      <View style={styles.teamStats}>
-        <View style={styles.statItem}>
-          <Ionicons name="people" size={18} color={Colors.primary} />
-          <Text style={styles.statText}>{item.members} Members</Text>
+        <View style={styles.teamStats}>
+          <View style={styles.statItem}>
+            <Ionicons name="people" size={18} color={Colors.primary} />
+            <Text style={styles.statText}>{item.teamMembersId?.length || 0} Members</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Ionicons name="trophy" size={18} color={Colors.primary} />
+            <Text style={styles.statText}>{item.matchesPlayed || 0} Matches</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Ionicons name="checkmark-circle" size={18} color={Colors.accent} />
+            <Text style={styles.statText}>{item.winMatches || 0} Wins ({winRate}%)</Text>
+          </View>
         </View>
-        <View style={styles.statItem}>
-          <Ionicons name="trophy" size={18} color={Colors.primary} />
-          <Text style={styles.statText}>{item.matches} Matches</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Ionicons name="checkmark-circle" size={18} color={Colors.accent} />
-          <Text style={styles.statText}>{item.wins} Wins</Text>
-        </View>
-      </View>
 
-      <TouchableOpacity style={styles.viewDetailsButton}>
-        <Text style={styles.viewDetailsText}>View Details</Text>
-        <Ionicons name="chevron-forward" size={20} color={Colors.primary} />
-      </TouchableOpacity>
-    </View>
-  );
+        <TouchableOpacity style={styles.viewDetailsButton}>
+          <Text style={styles.viewDetailsText}>View Details</Text>
+          <Ionicons name="chevron-forward" size={20} color={Colors.primary} />
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
       {/* Header Section */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Teams</Text>
@@ -115,17 +139,21 @@ export default function TeamScreen({ navigation }) {
       {/* Teams List */}
       <View style={styles.teamsSection}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>All Teams ({myCreatedTeams.length})</Text>
+          <Text style={styles.sectionTitle}>All Teams ({teams.length})</Text>
           <TouchableOpacity>
             <Ionicons name="filter" size={24} color={Colors.primary} />
           </TouchableOpacity>
         </View>
 
-        {myCreatedTeams.length > 0 ? (
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+        ) : teams.length > 0 ? (
           <FlatList
-            data={myCreatedTeams}
+            data={teams}
             renderItem={renderTeam}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item._id}
             scrollEnabled={false}
           />
         ) : (
@@ -138,30 +166,32 @@ export default function TeamScreen({ navigation }) {
       </View>
 
       {/* Stats Overview */}
-      <View style={styles.statsOverview}>
-        <Text style={styles.sectionTitle}>Overview</Text>
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Ionicons name="people" size={32} color={Colors.primary} />
-            <Text style={styles.statCardValue}>{myCreatedTeams.length}</Text>
-            <Text style={styles.statCardLabel}>Total Teams</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="star" size={32} color={Colors.secondary} />
-            <Text style={styles.statCardValue}>
-              {myCreatedTeams.filter(t => t.isCreator).length}
-            </Text>
-            <Text style={styles.statCardLabel}>Created</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="trophy" size={32} color={Colors.accent} />
-            <Text style={styles.statCardValue}>
-              {myCreatedTeams.reduce((sum, t) => sum + t.wins, 0)}
-            </Text>
-            <Text style={styles.statCardLabel}>Total Wins</Text>
+      {teams.length > 0 && (
+        <View style={styles.statsOverview}>
+          <Text style={styles.sectionTitle}>Overview</Text>
+          <View style={styles.statsGrid}>
+            <View style={styles.statCard}>
+              <Ionicons name="people" size={32} color={Colors.primary} />
+              <Text style={styles.statCardValue}>{teams.length}</Text>
+              <Text style={styles.statCardLabel}>Total Teams</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Ionicons name="star" size={32} color={Colors.secondary} />
+              <Text style={styles.statCardValue}>
+                {teams.filter(t => isTeamCaptain(t)).length}
+              </Text>
+              <Text style={styles.statCardLabel}>Captain</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Ionicons name="trophy" size={32} color={Colors.accent} />
+              <Text style={styles.statCardValue}>
+                {teams.reduce((sum, t) => sum + (t.winMatches || 0), 0)}
+              </Text>
+              <Text style={styles.statCardLabel}>Total Wins</Text>
+            </View>
           </View>
         </View>
-      </View>
+      )}
     </ScrollView>
   );
 }
@@ -343,6 +373,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textLight,
     marginTop: 5,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
   },
   statsOverview: {
     padding: 15,

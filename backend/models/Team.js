@@ -6,21 +6,30 @@ const TeamSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  createdBy: {
+  teamMembersId: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  captain: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  players: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }],
   district: {
     type: String,
     required: true
   },
   village: {
-    type: String
+    type: String,
+    required: true
+  },
+  winMatches: {
+    type: Number,
+    default: 0
+  },
+  matchesPlayed: {
+    type: Number,
+    default: 0
   },
   teamType: {
     type: String,
