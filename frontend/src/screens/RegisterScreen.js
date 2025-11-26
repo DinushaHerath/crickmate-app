@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useDispatch } from 'react-redux';
 import { setCredentials } from '../store/slices/authSlice';
 import { register } from '../api/auth';
+import { initialGroundSetup } from '../api/grounds';
 import { Colors } from '../../constants/theme';
 
 const PLAYER_ROLES = [
@@ -26,6 +27,7 @@ export default function RegisterScreen({ navigation }) {
   const [selectedPlayerRole, setSelectedPlayerRole] = useState(''); // Single role
   
   // Ground owner fields
+  const [groundName, setGroundName] = useState('');
   const [grounds, setGrounds] = useState([]);
   
   const [loading, setLoading] = useState(false);
@@ -44,6 +46,16 @@ export default function RegisterScreen({ navigation }) {
 
     if (role === 'player' && (!district || !village)) {
       Alert.alert('Error', 'Please provide district and village');
+      return;
+    }
+
+    if (role === 'ground_owner' && !groundName.trim()) {
+      Alert.alert('Error', 'Please enter your ground name');
+      return;
+    }
+
+    if (role === 'ground_owner' && !district) {
+      Alert.alert('Error', 'Please provide district');
       return;
     }
 
@@ -67,6 +79,19 @@ export default function RegisterScreen({ navigation }) {
       console.log('Registering with payload:', payload);
       const response = await register(payload);
       console.log('Registration successful:', response.data);
+      
+      // If ground owner, create initial ground setup
+      if (role === 'ground_owner' && groundName.trim()) {
+        try {
+          console.log('Creating initial ground setup with name:', groundName);
+          await initialGroundSetup(groundName.trim(), response.data.token);
+          console.log('Ground setup successful');
+        } catch (groundError) {
+          console.error('Ground setup error:', groundError);
+          // Don't block registration, just log the error
+        }
+      }
+      
       dispatch(setCredentials({ user: response.data.user, token: response.data.token }));
     } catch (error) {
       console.error('Registration error:', error);
@@ -218,6 +243,17 @@ export default function RegisterScreen({ navigation }) {
           {role === 'ground_owner' && (
             <>
               <View style={styles.inputWrapper}>
+                <Ionicons name="business-outline" size={20} color={Colors.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ground Name *"
+                  placeholderTextColor={Colors.textLight}
+                  value={groundName}
+                  onChangeText={setGroundName}
+                />
+              </View>
+
+              <View style={styles.inputWrapper}>
                 <Ionicons name="location-outline" size={20} color={Colors.textSecondary} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
@@ -227,7 +263,7 @@ export default function RegisterScreen({ navigation }) {
                   onChangeText={setDistrict}
                 />
               </View>
-              <Text style={styles.helperText}>You can add ground details after registration</Text>
+              <Text style={styles.helperText}>You can add more ground details after registration</Text>
             </>
           )}
 
@@ -379,5 +415,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
     fontSize: 14,
+  },
+  helperText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginBottom: 15,
+    fontStyle: 'italic',
   },
 });
