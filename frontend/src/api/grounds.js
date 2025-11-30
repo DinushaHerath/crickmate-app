@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axiosInstance from '../config/axios';
 import { API_BASE_URL } from '../config/api';
 
 const GROUNDS_API_URL = `${API_BASE_URL}/api/grounds`;
@@ -6,7 +6,7 @@ const GROUNDS_API_URL = `${API_BASE_URL}/api/grounds`;
 // Get ground owner's ground profile
 export const getMyGround = async (token) => {
   try {
-    const response = await axios.get(`${GROUNDS_API_URL}/my-ground`, {
+    const response = await axiosInstance.get(`${GROUNDS_API_URL}/my-ground`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }

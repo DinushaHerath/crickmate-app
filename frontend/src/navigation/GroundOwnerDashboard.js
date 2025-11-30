@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/theme';
 import GroundOwnerHomeScreen from '../screens/groundowner/GroundOwnerHomeScreen';
-import CalendarScreen from '../screens/groundowner/CalendarScreen';
+import CalendarStack from './CalendarStack';
 import BookingsScreen from '../screens/groundowner/BookingsScreen';
 import PriceScreen from '../screens/groundowner/PriceScreen';
 import GroundOwnerProfileScreen from '../screens/ground/GroundOwnerProfileScreen';
@@ -39,8 +39,9 @@ export default function GroundOwnerDashboard() {
       />
       <Tab.Screen 
         name="Calendar" 
-        component={CalendarScreen}
+        component={CalendarStack}
         options={{
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="calendar" size={size} color={color} />
           ),
