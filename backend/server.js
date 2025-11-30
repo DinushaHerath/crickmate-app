@@ -8,7 +8,13 @@ const app = express();
 const server = http.createServer(app);
 const { Server } = require('socket.io');
 
-app.use(cors());
+// Enhanced CORS configuration
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 app.use(express.json());
 
 // Socket.io setup
@@ -36,6 +42,7 @@ mongoose.connect(MONGO)
   .catch(err => console.log(err));
 
 app.get('/', (req, res) => res.send('CrickMate API running'));
+app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date() }));
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -47,6 +54,7 @@ const profileRoutes = require('./routes/profile');
 const teamJoinRequestRoutes = require('./routes/teamJoinRequests');
 const homeStatsRoutes = require('./routes/homeStats');
 const groundRoutes = require('./routes/grounds');
+const bookingRoutes = require('./routes/bookings');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/matches', matchRoutes);
@@ -57,9 +65,27 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/team-join-requests', teamJoinRequestRoutes);
 app.use('/api/home-stats', homeStatsRoutes);
 app.use('/api/grounds', groundRoutes);
+app.use('/api/bookings', bookingRoutes);
 
 const PORT = process.env.PORT || 5000;
+const os = require('os');
+function getLocalIps() {
+  const nets = os.networkInterfaces();
+  const ips = [];
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name] || []) {
+      if (net.family === 'IPv4' && !net.internal) {
+        ips.push(net.address);
+      }
+    }
+  }
+  return ips.length ? ips : ['localhost'];
+}
 server.listen(PORT, '0.0.0.0', () => {
+  const ips = getLocalIps();
   console.log(`Server running on port ${PORT}`);
-  console.log(`Access from device using: http://10.202.222.163:${PORT}`);
+  console.log(`Access from device using:`);
+  for (const ip of ips) {
+    console.log(` - http://${ip}:${PORT}`);
+  }
 });

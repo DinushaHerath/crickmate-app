@@ -1,298 +1,244 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
+import { useSelector } from 'react-redux';
 import { Colors } from '../../../constants/theme';
+import { getBookingDates, getBookingsByDate } from '../../api/bookings';
 
-export default function CalendarScreen() {
-  const [currentDate, setCurrentDate] = useState(new Date(2025, 10, 1)); // November 2025
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [showBookingModal, setShowBookingModal] = useState(false);
-  const [bookingForm, setBookingForm] = useState({
-    personName: '',
-    mobile: '',
-    payment: '',
-    date: '',
-    timeSlot: '',
-  });
-  
-  const bookings = [
-    { id: '1', date: '2025-11-25', time: '09:00 AM - 12:00 PM', person: 'Kamal Perera', mobile: '0771234567', payment: 8000, status: 'Confirmed' },
-    { id: '2', date: '2025-11-25', time: '02:00 PM - 05:00 PM', person: 'Nimal Silva', mobile: '0779876543', payment: 8000, status: 'Confirmed' },
-    { id: '3', date: '2025-11-26', time: '09:00 AM - 12:00 PM', person: 'Sunil Fernando', mobile: '0761234567', payment: 10000, status: 'Pending' },
-    { id: '4', date: '2025-11-26', time: '06:00 PM - 09:00 PM', person: 'Amal Jayasinghe', mobile: '0771122334', payment: 10000, status: 'Confirmed' },
-    { id: '5', date: '2025-11-27', time: '09:00 AM - 12:00 PM', person: 'Tharindu Wickramasinghe', mobile: '0778899445', payment: 8000, status: 'Confirmed' },
-    { id: '6', date: '2025-11-15', time: '02:00 PM - 05:00 PM', person: 'Dilshan Perera', mobile: '0765544332', payment: 8000, status: 'Confirmed' },
-    { id: '7', date: '2025-11-28', time: '06:00 PM - 09:00 PM', person: 'Chamara Silva', mobile: '0771234987', payment: 10000, status: 'Confirmed' },
-  ];
+export default function CalendarScreen({ navigation }) {
+  const { token } = useSelector((state) => state.auth);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [markedDates, setMarkedDates] = useState({});
+  const [selectedDate, setSelectedDate] = useState('');
+  const [bookingsForDate, setBookingsForDate] = useState([]);
+  const [loadingBookings, setLoadingBookings] = useState(false);
 
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                      'July', 'August', 'September', 'October', 'November', 'December'];
-  
-  const getDaysInMonth = (date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    return new Date(year, month + 1, 0).getDate();
-  };
+  useEffect(() => {
+    fetchBookingDates();
+  }, []);
 
-  const getFirstDayOfMonth = (date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    return new Date(year, month, 1).getDay();
-  };
-
-  const hasBooking = (day) => {
-    const year = currentDate.getFullYear();
-    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-    const dayStr = String(day).padStart(2, '0');
-    const dateStr = `${year}-${month}-${dayStr}`;
-    return bookings.some(b => b.date === dateStr);
-  };
-
-  const getBookingsForDate = (day) => {
-    const year = currentDate.getFullYear();
-    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-    const dayStr = String(day).padStart(2, '0');
-    const dateStr = `${year}-${month}-${dayStr}`;
-    return bookings.filter(b => b.date === dateStr);
-  };
-
-  const goToPreviousMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-    setSelectedDate(null);
-  };
-
-  const goToNextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-    setSelectedDate(null);
-  };
-
-  const handleDatePress = (day) => {
-    setSelectedDate(day);
-  };
-
-  const handleAddBooking = () => {
-    if (!selectedDate) {
-      Alert.alert('Error', 'Please select a date first');
-      return;
-    }
-    const year = currentDate.getFullYear();
-    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-    const dayStr = String(selectedDate).padStart(2, '0');
-    setBookingForm({
-      ...bookingForm,
-      date: `${year}-${month}-${dayStr}`,
-    });
-    setShowBookingModal(true);
-  };
-
-  const submitBooking = () => {
-    if (!bookingForm.personName || !bookingForm.mobile || !bookingForm.payment || !bookingForm.timeSlot) {
-      Alert.alert('Error', 'Please fill all fields');
-      return;
-    }
-    Alert.alert('Success', 'Booking placed successfully!');
-    setShowBookingModal(false);
-    setBookingForm({ personName: '', mobile: '', payment: '', date: '', timeSlot: '' });
-  };
-
-  const renderCalendar = () => {
-    const daysInMonth = getDaysInMonth(currentDate);
-    const firstDay = getFirstDayOfMonth(currentDate);
-    const days = [];
-    
-    // Empty cells for days before month starts
-    for (let i = 0; i < firstDay; i++) {
-      days.push(<View key={`empty-${i}`} style={styles.emptyDay} />);
-    }
-    
-    // Days of the month
-    for (let day = 1; day <= daysInMonth; day++) {
-      const isSelected = selectedDate === day;
-      const hasBookingDot = hasBooking(day);
+  const fetchBookingDates = async () => {
+    try {
+      const response = await getBookingDates(token);
+      console.log('Booking dates response:', response);
       
-      days.push(
-        <TouchableOpacity
-          key={day}
-          style={[styles.dayCell, isSelected && styles.selectedDay]}
-          onPress={() => handleDatePress(day)}
-        >
-          <Text style={[styles.dayText, isSelected && styles.selectedDayText]}>{day}</Text>
-          {hasBookingDot && <View style={styles.bookingDot} />}
-        </TouchableOpacity>
-      );
+      if (response.success && response.markedDates) {
+        setMarkedDates(response.markedDates);
+      }
+    } catch (error) {
+      console.error('Error fetching booking dates:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-    
-    return days;
   };
 
-  const selectedDateBookings = selectedDate ? getBookingsForDate(selectedDate) : [];
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchBookingDates();
+    if (selectedDate) {
+      fetchBookingsForDate(selectedDate);
+    }
+  };
+
+  const fetchBookingsForDate = async (dateString) => {
+    setLoadingBookings(true);
+    try {
+      const response = await getBookingsByDate(dateString, token);
+      console.log('Bookings for date:', response);
+      
+      if (response.success) {
+        setBookingsForDate(response.bookings || []);
+      }
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      setBookingsForDate([]);
+    } finally {
+      setLoadingBookings(false);
+    }
+  };
+
+  const handleDayPress = (day) => {
+    const dateString = day.dateString;
+    console.log('Date selected:', dateString);
+    
+    setSelectedDate(dateString);
+    fetchBookingsForDate(dateString);
+  };
+
+  const handlePlaceBooking = () => {
+    if (!selectedDate) {
+      Alert.alert('Select Date', 'Please select a date first');
+      return;
+    }
+    navigation.navigate('PlaceBooking', { date: selectedDate, onBookingCreated: onRefresh });
+  };
+
+  const formatTime = (time) => {
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const options = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
+  };
+
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'confirmed': return Colors.accent;
+      case 'pending': return Colors.secondary;
+      case 'cancelled': return Colors.error;
+      case 'completed': return Colors.textSecondary;
+      default: return Colors.textSecondary;
+    }
+  };
+
+  const getStatusBgColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'confirmed': return Colors.accent + '20';
+      case 'pending': return Colors.secondary + '20';
+      case 'cancelled': return Colors.error + '20';
+      case 'completed': return Colors.textSecondary + '20';
+      default: return Colors.cardBackground;
+    }
+  };
+
+  const getMarkedDates = () => {
+    const dates = { ...markedDates };
+    if (selectedDate) {
+      dates[selectedDate] = {
+        ...dates[selectedDate],
+        selected: true,
+        selectedColor: Colors.primary
+      };
+    }
+    return dates;
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={styles.loadingText}>Loading calendar...</Text>
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.container}>
-      {/* Month Header */}
-      <View style={styles.monthHeader}>
-        <TouchableOpacity onPress={goToPreviousMonth}>
-          <Ionicons name="chevron-back" size={28} color={Colors.primary} />
-        </TouchableOpacity>
-        <Text style={styles.monthText}>
-          {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-        </Text>
-        <TouchableOpacity onPress={goToNextMonth}>
-          <Ionicons name="chevron-forward" size={28} color={Colors.primary} />
-        </TouchableOpacity>
-      </View>
+    <ScrollView 
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
+      }
+    >
+      <Calendar
+        markedDates={getMarkedDates()}
+        onDayPress={handleDayPress}
+        theme={{
+          backgroundColor: Colors.white,
+          calendarBackground: Colors.white,
+          textSectionTitleColor: Colors.textSecondary,
+          selectedDayBackgroundColor: Colors.primary,
+          selectedDayTextColor: Colors.white,
+          todayTextColor: Colors.primary,
+          dayTextColor: Colors.textPrimary,
+          textDisabledColor: Colors.textLight,
+          dotColor: '#4CAF50',
+          selectedDotColor: Colors.white,
+          arrowColor: Colors.primary,
+          monthTextColor: Colors.textPrimary,
+          textDayFontWeight: '500',
+          textMonthFontWeight: 'bold',
+          textDayHeaderFontWeight: '600',
+          textDayFontSize: 15,
+          textMonthFontSize: 18,
+          textDayHeaderFontSize: 13
+        }}
+        markingType={'dot'}
+        style={styles.calendar}
+      />
 
-      {/* Calendar Grid */}
-      <View style={styles.calendarContainer}>
-        {/* Day Headers */}
-        <View style={styles.dayHeaders}>
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-            <View key={day} style={styles.dayHeader}>
-              <Text style={styles.dayHeaderText}>{day}</Text>
-            </View>
-          ))}
-        </View>
-        
-        {/* Calendar Days */}
-        <View style={styles.calendarGrid}>
-          {renderCalendar()}
-        </View>
-      </View>
-
-      {/* Add Booking Button */}
       <View style={styles.addButtonContainer}>
-        <TouchableOpacity style={styles.addBookingButton} onPress={handleAddBooking}>
+        <TouchableOpacity style={styles.addBookingButton} onPress={handlePlaceBooking}>
           <Ionicons name="add-circle" size={24} color={Colors.white} />
           <Text style={styles.addBookingText}>Place a Booking</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Booking Details for Selected Date */}
-      <ScrollView style={styles.bookingsList}>
-        {selectedDate ? (
-          <>
-            <Text style={styles.sectionTitle}>
-              Bookings for {monthNames[currentDate.getMonth()]} {selectedDate}
-            </Text>
-            
-            {selectedDateBookings.length > 0 ? (
-              selectedDateBookings.map((booking) => (
-                <View key={booking.id} style={styles.bookingCard}>
-                  <View style={styles.bookingHeader}>
-                    <Ionicons name="person-circle" size={40} color={Colors.primary} />
-                    <View style={styles.bookingInfo}>
-                      <Text style={styles.personName}>{booking.person}</Text>
-                      <View style={styles.contactRow}>
-                        <Ionicons name="call" size={14} color={Colors.textSecondary} />
-                        <Text style={styles.contactText}>{booking.mobile}</Text>
-                      </View>
-                    </View>
-                    <View style={[
-                      styles.statusBadge,
-                      booking.status === 'Confirmed' ? styles.statusConfirmed : styles.statusPending
-                    ]}>
-                      <Text style={[
-                        styles.statusText,
-                        booking.status === 'Confirmed' ? styles.statusTextConfirmed : styles.statusTextPending
-                      ]}>
-                        {booking.status}
-                      </Text>
+      {selectedDate && (
+        <View style={styles.bookingsSection}>
+          <Text style={styles.sectionTitle}>Bookings for {formatDate(selectedDate)}</Text>
+
+          {loadingBookings ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={Colors.primary} />
+            </View>
+          ) : bookingsForDate.length > 0 ? (
+            bookingsForDate.map((booking) => (
+              <View key={booking._id} style={styles.bookingCard}>
+                <View style={styles.bookingHeader}>
+                  <View style={styles.bookingIconContainer}>
+                    <Ionicons name="person" size={24} color={Colors.primary} />
+                  </View>
+                  <View style={styles.bookingInfo}>
+                    <Text style={styles.customerName}>{booking.customerName}</Text>
+                    <View style={styles.contactRow}>
+                      <Ionicons name="call-outline" size={14} color={Colors.textSecondary} />
+                      <Text style={styles.contactText}>{booking.mobile}</Text>
                     </View>
                   </View>
-                  
-                  <View style={styles.bookingDetails}>
-                    <View style={styles.detailRow}>
-                      <Ionicons name="time" size={18} color={Colors.textSecondary} />
-                      <Text style={styles.detailText}>{booking.time}</Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Ionicons name="cash" size={18} color={Colors.accent} />
-                      <Text style={styles.paymentText}>LKR {booking.payment.toLocaleString()}</Text>
-                    </View>
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusBgColor(booking.status) }]}>
+                    <Text style={[styles.statusText, { color: getStatusColor(booking.status) }]}>
+                      {booking.status?.charAt(0).toUpperCase() + booking.status?.slice(1)}
+                    </Text>
                   </View>
                 </View>
-              ))
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="calendar-outline" size={48} color={Colors.textLight} />
-                <Text style={styles.emptyText}>No bookings for this date</Text>
+
+                <View style={styles.bookingDetails}>
+                  <View style={styles.detailRow}>
+                    <Ionicons name="time-outline" size={16} color={Colors.textSecondary} />
+                    <Text style={styles.detailText}>
+                      {formatTime(booking.timeSlot.start)} - {formatTime(booking.timeSlot.end)}
+                    </Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Ionicons name="cash-outline" size={16} color={Colors.accent} />
+                    <Text style={[styles.detailText, styles.amountText]}>
+                      LKR {booking.paymentAmount.toLocaleString()}
+                    </Text>
+                  </View>
+                </View>
+
+                {booking.notes && (
+                  <Text style={styles.notesText}>Note: {booking.notes}</Text>
+                )}
               </View>
-            )}
-          </>
-        ) : (
-          <View style={styles.emptyState}>
-            <Ionicons name="hand-left" size={48} color={Colors.textLight} />
-            <Text style={styles.emptyText}>Select a date to view bookings</Text>
-          </View>
-        )}
-      </ScrollView>
-
-      {/* Add Booking Modal */}
-      <Modal
-        visible={showBookingModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowBookingModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Place a Booking</Text>
-              <TouchableOpacity onPress={() => setShowBookingModal(false)}>
-                <Ionicons name="close" size={28} color={Colors.textSecondary} />
-              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="calendar-outline" size={48} color={Colors.textLight} />
+              <Text style={styles.emptyText}>No bookings for this date</Text>
+              <Text style={styles.emptySubtext}>Tap "Place a Booking" to add one</Text>
             </View>
-
-            <ScrollView style={styles.modalForm}>
-              <Text style={styles.formLabel}>Person Name</Text>
-              <TextInput
-                style={styles.formInput}
-                placeholder="Enter person name"
-                value={bookingForm.personName}
-                onChangeText={(text) => setBookingForm({...bookingForm, personName: text})}
-              />
-
-              <Text style={styles.formLabel}>Mobile Number</Text>
-              <TextInput
-                style={styles.formInput}
-                placeholder="Enter mobile number"
-                value={bookingForm.mobile}
-                onChangeText={(text) => setBookingForm({...bookingForm, mobile: text})}
-                keyboardType="phone-pad"
-              />
-
-              <Text style={styles.formLabel}>Payment Amount (LKR)</Text>
-              <TextInput
-                style={styles.formInput}
-                placeholder="Enter payment amount"
-                value={bookingForm.payment}
-                onChangeText={(text) => setBookingForm({...bookingForm, payment: text})}
-                keyboardType="numeric"
-              />
-
-              <Text style={styles.formLabel}>Time Slot</Text>
-              <TextInput
-                style={styles.formInput}
-                placeholder="e.g., 09:00 AM - 12:00 PM"
-                value={bookingForm.timeSlot}
-                onChangeText={(text) => setBookingForm({...bookingForm, timeSlot: text})}
-              />
-
-              <Text style={styles.formLabel}>Date</Text>
-              <TextInput
-                style={[styles.formInput, styles.disabledInput]}
-                value={bookingForm.date}
-                editable={false}
-              />
-            </ScrollView>
-
-            <TouchableOpacity style={styles.submitButton} onPress={submitBooking}>
-              <Text style={styles.submitButtonText}>Confirm Booking</Text>
-            </TouchableOpacity>
-          </View>
+          )}
         </View>
-      </Modal>
-    </View>
+      )}
+
+      {!selectedDate && (
+        <View style={styles.emptyState}>
+          <Ionicons name="hand-left-outline" size={48} color={Colors.textLight} />
+          <Text style={styles.emptyText}>Select a date</Text>
+          <Text style={styles.emptySubtext}>Tap on a date to view or add bookings</Text>
+        </View>
+      )}
+    </ScrollView>
   );
 }
 
@@ -301,103 +247,51 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  monthHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  centerContent: {
+    justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    color: Colors.textSecondary,
+    fontSize: 14,
+  },
+  calendar: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  addButtonContainer: {
     padding: 20,
     backgroundColor: Colors.white,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
-  },
-  monthText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.textPrimary,
-  },
-  calendarContainer: {
-    backgroundColor: Colors.white,
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  dayHeaders: {
-    flexDirection: 'row',
-    marginBottom: 10,
-  },
-  dayHeader: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  dayHeaderText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-  },
-  calendarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  dayCell: {
-    width: '14.28%',
-    aspectRatio: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 5,
-    position: 'relative',
-  },
-  emptyDay: {
-    width: '14.28%',
-    aspectRatio: 1,
-  },
-  selectedDay: {
-    backgroundColor: Colors.primary,
-    borderRadius: 8,
-  },
-  dayText: {
-    fontSize: 14,
-    color: Colors.textPrimary,
-    fontWeight: '500',
-  },
-  selectedDayText: {
-    color: Colors.white,
-    fontWeight: 'bold',
-  },
-  bookingDot: {
-    position: 'absolute',
-    bottom: 5,
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: Colors.accent,
-  },
-  addButtonContainer: {
-    padding: 15,
-    backgroundColor: Colors.white,
   },
   addBookingButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.primary,
-    padding: 14,
-    borderRadius: 8,
-    gap: 8,
+    paddingVertical: 15,
+    borderRadius: 12,
+    gap: 10,
   },
   addBookingText: {
     color: Colors.white,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
   },
-  bookingsList: {
-    flex: 1,
-    padding: 15,
+  bookingsSection: {
+    padding: 20,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: Colors.textPrimary,
     marginBottom: 15,
+  },
+  loadingContainer: {
+    padding: 20,
+    alignItems: 'center',
   },
   bookingCard: {
     backgroundColor: Colors.white,
@@ -412,11 +306,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
+  bookingIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.softOrange,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
   bookingInfo: {
     flex: 1,
-    marginLeft: 12,
   },
-  personName: {
+  customerName: {
     fontSize: 16,
     fontWeight: '600',
     color: Colors.textPrimary,
@@ -432,115 +334,56 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  statusConfirmed: {
-    backgroundColor: Colors.accent + '20',
-  },
-  statusPending: {
-    backgroundColor: Colors.secondary + '20',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   statusText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  statusTextConfirmed: {
-    color: Colors.accent,
-  },
-  statusTextPending: {
-    color: Colors.secondary,
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   bookingDetails: {
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    gap: 8,
+    flexDirection: 'row',
+    gap: 15,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   detailText: {
     fontSize: 14,
     color: Colors.textSecondary,
   },
-  paymentText: {
-    fontSize: 15,
-    fontWeight: '600',
+  amountText: {
+    fontWeight: 'bold',
     color: Colors.accent,
+  },
+  notesText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    fontStyle: 'italic',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 60,
+    paddingHorizontal: 40,
   },
   emptyText: {
     fontSize: 16,
-    color: Colors.textLight,
-    marginTop: 12,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: Colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 40,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.textPrimary,
-  },
-  modalForm: {
-    padding: 20,
-  },
-  formLabel: {
-    fontSize: 14,
     fontWeight: '600',
-    color: Colors.textSecondary,
+    color: Colors.textPrimary,
+    marginTop: 15,
     marginBottom: 8,
-    marginTop: 12,
   },
-  formInput: {
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: Colors.textPrimary,
-  },
-  disabledInput: {
-    backgroundColor: Colors.cardBackground,
+  emptySubtext: {
+    fontSize: 14,
     color: Colors.textSecondary,
-  },
-  submitButton: {
-    backgroundColor: Colors.primary,
-    margin: 20,
-    marginTop: 10,
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  submitButtonText: {
-    color: Colors.white,
-    fontSize: 16,
-    fontWeight: '600',
+    textAlign: 'center',
   },
 });

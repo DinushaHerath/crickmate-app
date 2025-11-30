@@ -7,7 +7,8 @@
 
 // Your computer has these IPs:
 // - 192.168.56.1 (VirtualBox/VM network)
-// - 10.246.102.163 (Your main network - CURRENT IP)
+// - 10.30.21.163 (Your main network - CURRENT IP)
 
-export const API_BASE_URL = 'http://10.246.102.163:5000';
+// Using physical device on same WiFi network
+export const API_BASE_URL = 'http://10.30.21.163:5000';
 export const AUTH_API_URL = `${API_BASE_URL}/api/auth`;
