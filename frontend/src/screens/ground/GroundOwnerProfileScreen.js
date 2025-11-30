@@ -146,14 +146,19 @@ export default function GroundOwnerProfileScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 24 }}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="business" size={50} color={Colors.primary} />
+        <View style={styles.headerTop}>
+          <View style={styles.iconContainer}>
+            <Ionicons name="business" size={40} color={Colors.primary} />
+          </View>
+          <View style={styles.headerInfo}>
+            <Text style={styles.groundNameHeader}>{groundName || 'My Ground'}</Text>
+            <Text style={styles.headerSubtitle}>{district && village ? `${village}, ${district}` : 'Ground Owner'}</Text>
+          </View>
         </View>
-        <Text style={styles.groundNameHeader}>{groundName || 'My Ground'}</Text>
-        
+
         <View style={styles.buttonRow}>
           {!isEditing ? (
             <TouchableOpacity style={styles.editButton} onPress={() => setIsEditing(true)}>
@@ -189,67 +194,84 @@ export default function GroundOwnerProfileScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Basic Information</Text>
         
-        <View style={styles.fieldContainer}>
-          <Text style={styles.label}>Ground Name *</Text>
-          {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={groundName}
-              onChangeText={setGroundName}
-              placeholder="Enter ground name"
-              placeholderTextColor={Colors.textSecondary}
-            />
-          ) : (
-            <Text style={styles.value}>{groundName || 'Not set'}</Text>
-          )}
-        </View>
-
-        <View style={styles.fieldContainer}>
-          <Text style={styles.label}>Address</Text>
-          {isEditing ? (
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={address}
-              onChangeText={setAddress}
-              placeholder="Enter full address"
-              placeholderTextColor={Colors.textSecondary}
-              multiline
-              numberOfLines={3}
-            />
-          ) : (
-            <Text style={styles.value}>{address || 'Not set'}</Text>
-          )}
-        </View>
-
-        <View style={styles.fieldRow}>
-          <View style={styles.fieldHalf}>
-            <Text style={styles.label}>District</Text>
-            {isEditing ? (
-              <TextInput
-                style={styles.input}
-                value={district}
-                onChangeText={setDistrict}
-                placeholder="District"
-                placeholderTextColor={Colors.textSecondary}
-              />
-            ) : (
-              <Text style={styles.value}>{district || 'Not set'}</Text>
-            )}
+        <View style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Ionicons name="business-outline" size={20} color={Colors.primary} />
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>Ground Name</Text>
+              {isEditing ? (
+                <TextInput
+                  style={styles.inlineInput}
+                  value={groundName}
+                  onChangeText={setGroundName}
+                  placeholder="Enter ground name"
+                  placeholderTextColor={Colors.textSecondary}
+                />
+              ) : (
+                <Text style={styles.infoValue}>{groundName || '-'}</Text>
+              )}
+            </View>
           </View>
+        </View>
 
-          <View style={styles.fieldHalf}>
-            <Text style={styles.label}>Village</Text>
-            {isEditing ? (
-              <TextInput
-                style={styles.input}
-                value={village}
-                onChangeText={setVillage}
-                placeholder="Village"
-                placeholderTextColor={Colors.textSecondary}
-              />
-            ) : (
-              <Text style={styles.value}>{village || 'Not set'}</Text>
-            )}
+        <View style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Ionicons name="location-outline" size={20} color={Colors.primary} />
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>Address</Text>
+              {isEditing ? (
+                <TextInput
+                  style={[styles.inlineInput, styles.textArea]}
+                  value={address}
+                  onChangeText={setAddress}
+                  placeholder="Enter address"
+                  placeholderTextColor={Colors.textSecondary}
+                  multiline
+                />
+              ) : (
+                <Text style={styles.infoValue}>{address || '-'}</Text>
+              )}
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Ionicons name="map-outline" size={20} color={Colors.primary} />
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>District</Text>
+              {isEditing ? (
+                <TextInput
+                  style={styles.inlineInput}
+                  value={district}
+                  onChangeText={setDistrict}
+                  placeholder="Enter district"
+                  placeholderTextColor={Colors.textSecondary}
+                />
+              ) : (
+                <Text style={styles.infoValue}>{district || '-'}</Text>
+              )}
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Ionicons name="home-outline" size={20} color={Colors.primary} />
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>Village</Text>
+              {isEditing ? (
+                <TextInput
+                  style={styles.inlineInput}
+                  value={village}
+                  onChangeText={setVillage}
+                  placeholder="Enter village"
+                  placeholderTextColor={Colors.textSecondary}
+                />
+              ) : (
+                <Text style={styles.infoValue}>{village || '-'}</Text>
+              )}
+            </View>
           </View>
         </View>
       </View>
@@ -258,53 +280,68 @@ export default function GroundOwnerProfileScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Contact Information</Text>
         
-        <View style={styles.fieldContainer}>
-          <Text style={styles.label}>Phone</Text>
-          {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="Phone number"
-              placeholderTextColor={Colors.textSecondary}
-              keyboardType="phone-pad"
-            />
-          ) : (
-            <Text style={styles.value}>{phone || 'Not set'}</Text>
-          )}
+        <View style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Ionicons name="call-outline" size={20} color={Colors.primary} />
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>Phone</Text>
+              {isEditing ? (
+                <TextInput
+                  style={styles.inlineInput}
+                  value={phone}
+                  onChangeText={setPhone}
+                  placeholder="Phone number"
+                  placeholderTextColor={Colors.textSecondary}
+                  keyboardType="phone-pad"
+                />
+              ) : (
+                <Text style={styles.infoValue}>{phone || 'Not set'}</Text>
+              )}
+            </View>
+          </View>
         </View>
 
-        <View style={styles.fieldContainer}>
-          <Text style={styles.label}>Email</Text>
-          {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="Email address"
-              placeholderTextColor={Colors.textSecondary}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          ) : (
-            <Text style={styles.value}>{email || 'Not set'}</Text>
-          )}
+        <View style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Ionicons name="mail-outline" size={20} color={Colors.primary} />
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>Email</Text>
+              {isEditing ? (
+                <TextInput
+                  style={styles.inlineInput}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="Email address"
+                  placeholderTextColor={Colors.textSecondary}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              ) : (
+                <Text style={styles.infoValue}>{email || 'Not set'}</Text>
+              )}
+            </View>
+          </View>
         </View>
 
-        <View style={styles.fieldContainer}>
-          <Text style={styles.label}>WhatsApp</Text>
-          {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={whatsapp}
-              onChangeText={setWhatsapp}
-              placeholder="WhatsApp number"
-              placeholderTextColor={Colors.textSecondary}
-              keyboardType="phone-pad"
-            />
-          ) : (
-            <Text style={styles.value}>{whatsapp || 'Not set'}</Text>
-          )}
+        <View style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Ionicons name="logo-whatsapp" size={20} color={Colors.accent} />
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>WhatsApp</Text>
+              {isEditing ? (
+                <TextInput
+                  style={styles.inlineInput}
+                  value={whatsapp}
+                  onChangeText={setWhatsapp}
+                  placeholder="WhatsApp number"
+                  placeholderTextColor={Colors.textSecondary}
+                  keyboardType="phone-pad"
+                />
+              ) : (
+                <Text style={styles.infoValue}>{whatsapp || 'Not set'}</Text>
+              )}
+            </View>
+          </View>
         </View>
       </View>
 
@@ -312,64 +349,79 @@ export default function GroundOwnerProfileScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Ground Details</Text>
         
-        <View style={styles.fieldContainer}>
-          <Text style={styles.label}>Pitch Type</Text>
-          {isEditing ? (
-            <View style={styles.pitchTypeSelector}>
-              {['Turf', 'Matting', 'Grass', 'Cement', 'Mixed'].map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  style={[
-                    styles.pitchTypeOption,
-                    pitchType === type && styles.pitchTypeSelected
-                  ]}
-                  onPress={() => setPitchType(type)}
-                >
-                  <Text style={[
-                    styles.pitchTypeText,
-                    pitchType === type && styles.pitchTypeTextSelected
-                  ]}>
-                    {type}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+        <View style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Ionicons name="cellular-outline" size={20} color={Colors.primary} />
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>Pitch Type</Text>
+              {isEditing ? (
+                <View style={styles.roleSelector}>
+                  {['Turf', 'Matting', 'Grass', 'Cement', 'Mixed'].map((type) => (
+                    <TouchableOpacity
+                      key={type}
+                      style={[
+                        styles.roleOption,
+                        pitchType === type && styles.roleOptionSelected
+                      ]}
+                      onPress={() => setPitchType(type)}
+                    >
+                      <Text style={[
+                        styles.roleText,
+                        pitchType === type && styles.roleTextSelected
+                      ]}>
+                        {type}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.infoValue}>{pitchType || 'Not set'}</Text>
+              )}
             </View>
-          ) : (
-            <Text style={styles.value}>{pitchType || 'Not set'}</Text>
-          )}
+          </View>
         </View>
 
-        <View style={styles.fieldContainer}>
-          <Text style={styles.label}>Capacity</Text>
-          {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={capacity}
-              onChangeText={setCapacity}
-              placeholder="Number of people"
-              placeholderTextColor={Colors.textSecondary}
-              keyboardType="number-pad"
-            />
-          ) : (
-            <Text style={styles.value}>{capacity ? `${capacity} people` : 'Not set'}</Text>
-          )}
+        <View style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Ionicons name="people-outline" size={20} color={Colors.primary} />
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>Capacity</Text>
+              {isEditing ? (
+                <TextInput
+                  style={styles.inlineInput}
+                  value={capacity}
+                  onChangeText={setCapacity}
+                  placeholder="Number of people"
+                  placeholderTextColor={Colors.textSecondary}
+                  keyboardType="number-pad"
+                />
+              ) : (
+                <Text style={styles.infoValue}>{capacity ? `${capacity} people` : 'Not set'}</Text>
+              )}
+            </View>
+          </View>
         </View>
 
-        <View style={styles.fieldContainer}>
-          <Text style={styles.label}>Description</Text>
-          {isEditing ? (
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Describe your ground..."
-              placeholderTextColor={Colors.textSecondary}
-              multiline
-              numberOfLines={4}
-            />
-          ) : (
-            <Text style={styles.value}>{description || 'Not set'}</Text>
-          )}
+        <View style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Ionicons name="document-text-outline" size={20} color={Colors.primary} />
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>Description</Text>
+              {isEditing ? (
+                <TextInput
+                  style={[styles.inlineInput, styles.textArea]}
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder="Describe your ground..."
+                  placeholderTextColor={Colors.textSecondary}
+                  multiline
+                  numberOfLines={4}
+                />
+              ) : (
+                <Text style={styles.infoValue}>{description || 'Not set'}</Text>
+              )}
+            </View>
+          </View>
         </View>
       </View>
 
@@ -377,57 +429,72 @@ export default function GroundOwnerProfileScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Pricing (LKR)</Text>
         
-        <View style={styles.fieldContainer}>
-          <Text style={styles.label}>Hourly Rate</Text>
-          {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={hourlyRate}
-              onChangeText={setHourlyRate}
-              placeholder="0.00"
-              placeholderTextColor={Colors.textSecondary}
-              keyboardType="decimal-pad"
-            />
-          ) : (
-            <Text style={styles.value}>{hourlyRate ? `LKR ${hourlyRate}` : 'Not set'}</Text>
-          )}
+        <View style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Ionicons name="time-outline" size={20} color={Colors.primary} />
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>Hourly Rate</Text>
+              {isEditing ? (
+                <TextInput
+                  style={styles.inlineInput}
+                  value={hourlyRate}
+                  onChangeText={setHourlyRate}
+                  placeholder="0.00"
+                  placeholderTextColor={Colors.textSecondary}
+                  keyboardType="decimal-pad"
+                />
+              ) : (
+                <Text style={styles.infoValue}>{hourlyRate ? `LKR ${hourlyRate}` : 'Not set'}</Text>
+              )}
+            </View>
+          </View>
         </View>
 
-        <View style={styles.fieldContainer}>
-          <Text style={styles.label}>Half Day Rate</Text>
-          {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={halfDayRate}
-              onChangeText={setHalfDayRate}
-              placeholder="0.00"
-              placeholderTextColor={Colors.textSecondary}
-              keyboardType="decimal-pad"
-            />
-          ) : (
-            <Text style={styles.value}>{halfDayRate ? `LKR ${halfDayRate}` : 'Not set'}</Text>
-          )}
+        <View style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Ionicons name="partly-sunny-outline" size={20} color={Colors.primary} />
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>Half Day Rate</Text>
+              {isEditing ? (
+                <TextInput
+                  style={styles.inlineInput}
+                  value={halfDayRate}
+                  onChangeText={setHalfDayRate}
+                  placeholder="0.00"
+                  placeholderTextColor={Colors.textSecondary}
+                  keyboardType="decimal-pad"
+                />
+              ) : (
+                <Text style={styles.infoValue}>{halfDayRate ? `LKR ${halfDayRate}` : 'Not set'}</Text>
+              )}
+            </View>
+          </View>
         </View>
 
-        <View style={styles.fieldContainer}>
-          <Text style={styles.label}>Full Day Rate</Text>
-          {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={fullDayRate}
-              onChangeText={setFullDayRate}
-              placeholder="0.00"
-              placeholderTextColor={Colors.textSecondary}
-              keyboardType="decimal-pad"
-            />
-          ) : (
-            <Text style={styles.value}>{fullDayRate ? `LKR ${fullDayRate}` : 'Not set'}</Text>
-          )}
+        <View style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Ionicons name="sunny-outline" size={20} color={Colors.primary} />
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>Full Day Rate</Text>
+              {isEditing ? (
+                <TextInput
+                  style={styles.inlineInput}
+                  value={fullDayRate}
+                  onChangeText={setFullDayRate}
+                  placeholder="0.00"
+                  placeholderTextColor={Colors.textSecondary}
+                  keyboardType="decimal-pad"
+                />
+              ) : (
+                <Text style={styles.infoValue}>{fullDayRate ? `LKR ${fullDayRate}` : 'Not set'}</Text>
+              )}
+            </View>
+          </View>
         </View>
       </View>
 
       {/* Logout Section */}
-      <View style={styles.section}>
+      <View style={styles.logoutSection}>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={20} color={Colors.white} />
           <Text style={styles.logoutButtonText}>Logout</Text>
@@ -446,36 +513,50 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: Colors.primary,
-    padding: 20,
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+  },
+  headerTop: {
+    flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 15,
   },
   iconContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: Colors.white,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 15,
+    marginRight: 15,
+  },
+  headerInfo: {
+    flex: 1,
   },
   groundNameHeader: {
     fontSize: 24,
     fontWeight: 'bold',
     color: Colors.white,
-    marginBottom: 15,
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: Colors.white,
+    opacity: 0.9,
   },
   buttonRow: {
     flexDirection: 'row',
     gap: 10,
-    width: '100%',
-    justifyContent: 'center',
+    marginTop: 10,
   },
   editButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
+    gap: 6,
     backgroundColor: Colors.white,
-    paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
   },
@@ -485,13 +566,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   cancelButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: Colors.textSecondary,
-    paddingHorizontal: 20,
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.3)',
     paddingVertical: 10,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.white,
   },
   cancelButtonText: {
     color: Colors.white,
@@ -499,11 +583,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   saveButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
+    gap: 6,
     backgroundColor: Colors.accent,
-    paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
   },
@@ -513,36 +598,45 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   disabledButton: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   section: {
-    backgroundColor: Colors.white,
-    marginTop: 15,
-    padding: 15,
+    padding: 20,
+    gap: 12,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: Colors.textPrimary,
-    marginBottom: 15,
+    marginBottom: 12,
   },
-  fieldContainer: {
-    marginBottom: 15,
+  infoCard: {
+    backgroundColor: Colors.white,
+    padding: 15,
+    borderRadius: 12,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  fieldRow: {
+  infoRow: {
     flexDirection: 'row',
-    gap: 10,
+    alignItems: 'center',
+    gap: 12,
   },
-  fieldHalf: {
+  infoContent: {
     flex: 1,
   },
-  label: {
+  infoLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: Colors.textSecondary,
-    marginBottom: 5,
+    marginBottom: 4,
   },
-  input: {
+  infoValue: {
+    fontSize: 16,
+    color: Colors.textPrimary,
+  },
+  inlineInput: {
     backgroundColor: Colors.cardBackground,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -552,20 +646,22 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   textArea: {
-    height: 80,
+    minHeight: 80,
     textAlignVertical: 'top',
   },
-  value: {
-    fontSize: 16,
-    color: Colors.textPrimary,
-    paddingVertical: 8,
+  fieldRow: {
+    flexDirection: 'row',
+    gap: 10,
   },
-  pitchTypeSelector: {
+  fieldHalf: {
+    flex: 1,
+  },
+  roleSelector: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
   },
-  pitchTypeOption: {
+  roleOption: {
     backgroundColor: Colors.cardBackground,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -573,17 +669,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  pitchTypeSelected: {
+  roleOptionSelected: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
-  pitchTypeText: {
+  roleText: {
     color: Colors.textPrimary,
     fontSize: 14,
   },
-  pitchTypeTextSelected: {
+  roleTextSelected: {
     color: Colors.white,
-    fontWeight: 'bold',
+    fontWeight: '600',
+  },
+  logoutSection: {
+    padding: 20,
+    paddingTop: 10,
   },
   logoutButton: {
     flexDirection: 'row',
@@ -591,9 +691,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: Colors.error,
     paddingVertical: 15,
-    borderRadius: 8,
+    borderRadius: 12,
     gap: 10,
-    marginTop: 10,
   },
   logoutButtonText: {
     color: Colors.white,

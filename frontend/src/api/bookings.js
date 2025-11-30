@@ -133,3 +133,23 @@ export const deleteBooking = async (bookingId, token) => {
     throw error;
   }
 };
+
+// Edit booking details
+export const editBooking = async (bookingId, updates, token) => {
+  try {
+    const response = await axiosInstance.put(
+      `${BOOKINGS_API_URL}/${bookingId}`,
+      updates,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error editing booking:', error.response?.data || error.message);
+    throw error;
+  }
+};
