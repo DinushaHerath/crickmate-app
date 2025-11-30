@@ -65,35 +65,34 @@ router.post('/profile', auth, async (req, res) => {
 
     console.log('Updating ground profile for owner:', userId);
 
-    // Validate required fields
-    if (!groundName) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Ground name is required' 
-      });
-    }
-
     // Find existing ground or create new
     let ground = await Ground.findOne({ ownerId: userId });
 
     if (ground) {
-      // Update existing ground
-      ground.groundName = groundName;
-      ground.address = address || ground.address;
-      ground.district = district || ground.district;
-      ground.village = village || ground.village;
-      ground.contact = contact || ground.contact;
-      ground.facilities = facilities || ground.facilities;
-      ground.pricing = pricing || ground.pricing;
-      ground.availability = availability || ground.availability;
-      ground.description = description || ground.description;
-      ground.capacity = capacity || ground.capacity;
-      ground.pitchType = pitchType || ground.pitchType;
+      // Update existing ground - only update fields that are provided
+      if (groundName) ground.groundName = groundName;
+      if (address) ground.address = address;
+      if (district) ground.district = district;
+      if (village) ground.village = village;
+      if (contact) ground.contact = contact;
+      if (facilities) ground.facilities = facilities;
+      if (pricing) ground.pricing = pricing;
+      if (availability) ground.availability = availability;
+      if (description) ground.description = description;
+      if (capacity) ground.capacity = capacity;
+      if (pitchType) ground.pitchType = pitchType;
 
       await ground.save();
       console.log('Ground updated:', ground.groundName);
     } else {
-      // Create new ground
+      // Create new ground - groundName is required for new grounds
+      if (!groundName) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Ground name is required to create a new ground' 
+        });
+      }
+
       ground = new Ground({
         ownerId: userId,
         groundName,

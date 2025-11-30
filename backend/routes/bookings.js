@@ -29,6 +29,7 @@ router.post('/create', auth, async (req, res) => {
     }
     
     // Create booking
+    const initialStatus = Number(paymentAmount) > 0 ? 'completed' : 'pending';
     const booking = new Booking({
       groundId,
       ownerId: req.user.id,
@@ -37,7 +38,7 @@ router.post('/create', auth, async (req, res) => {
       paymentAmount,
       timeSlot,
       bookingDate: new Date(bookingDate),
-      status: 'pending',
+      status: initialStatus,
       notes
     });
     
@@ -58,6 +59,47 @@ router.post('/create', auth, async (req, res) => {
       message: 'Server error', 
       error: error.message 
     });
+  }
+});
+
+// Update booking details (edit)
+router.put('/:bookingId', auth, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { customerName, mobile, paymentAmount, timeSlot, bookingDate, notes, status } = req.body;
+
+    const booking = await Booking.findOne({ _id: bookingId, ownerId: req.user.id });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found or unauthorized' });
+    }
+
+    if (customerName !== undefined) booking.customerName = customerName;
+    if (mobile !== undefined) booking.mobile = mobile;
+    if (paymentAmount !== undefined) booking.paymentAmount = paymentAmount;
+    if (timeSlot !== undefined) booking.timeSlot = timeSlot;
+    if (bookingDate !== undefined) booking.bookingDate = new Date(bookingDate);
+    if (notes !== undefined) booking.notes = notes;
+
+    // Auto-status logic: if paymentAmount > 0 and not cancelled, set completed
+    if (status !== undefined) {
+      if (!['pending', 'confirmed', 'cancelled', 'completed'].includes(status)) {
+        return res.status(400).json({ success: false, message: 'Invalid status' });
+      }
+      booking.status = status;
+    } else {
+      if (Number(booking.paymentAmount) > 0 && booking.status !== 'cancelled') {
+        booking.status = 'completed';
+      } else if (!booking.paymentAmount || Number(booking.paymentAmount) === 0) {
+        booking.status = 'pending';
+      }
+    }
+
+    await booking.save();
+
+    res.json({ success: true, message: 'Booking updated', booking });
+  } catch (error) {
+    console.error('Error updating booking:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 });
 

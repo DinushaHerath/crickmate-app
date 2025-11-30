@@ -21,7 +21,7 @@ export const getMyGround = async (token) => {
 // Create or update ground profile
 export const saveGroundProfile = async (groundData, token) => {
   try {
-    const response = await axios.post(`${GROUNDS_API_URL}/profile`, groundData, {
+    const response = await axiosInstance.post(`${GROUNDS_API_URL}/profile`, groundData, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -37,7 +37,7 @@ export const saveGroundProfile = async (groundData, token) => {
 // Initial ground setup during signup
 export const initialGroundSetup = async (groundName, token) => {
   try {
-    const response = await axios.post(
+    const response = await axiosInstance.post(
       `${GROUNDS_API_URL}/initial-setup`, 
       { groundName },
       {
@@ -57,7 +57,7 @@ export const initialGroundSetup = async (groundName, token) => {
 // Search grounds
 export const searchGrounds = async (filters) => {
   try {
-    const response = await axios.get(`${GROUNDS_API_URL}/search`, {
+    const response = await axiosInstance.get(`${GROUNDS_API_URL}/search`, {
       params: filters
     });
     return response.data;
@@ -70,7 +70,7 @@ export const searchGrounds = async (filters) => {
 // Get ground by ID
 export const getGroundById = async (groundId) => {
   try {
-    const response = await axios.get(`${GROUNDS_API_URL}/${groundId}`);
+    const response = await axiosInstance.get(`${GROUNDS_API_URL}/${groundId}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching ground:', error.response?.data || error.message);

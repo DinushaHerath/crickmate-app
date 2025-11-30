@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/theme';
+import { useSelector } from 'react-redux';
+import { getMyGround, saveGroundProfile } from '../../api/grounds';
 
 export default function PriceScreen() {
+  const { token } = useSelector((state) => state.auth);
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [groundId, setGroundId] = useState(null);
   
   // Pricing data
   const [weekdayMorning, setWeekdayMorning] = useState('8000');
@@ -19,9 +25,62 @@ export default function PriceScreen() {
   const [equipmentCharge, setEquipmentCharge] = useState('1500');
   const [scorerCharge, setScorerCharge] = useState('1000');
 
-  const handleSave = () => {
-    Alert.alert('Success', 'Pricing updated successfully!');
-    setIsEditing(false);
+  useEffect(() => {
+    loadPricing();
+  }, []);
+
+  const loadPricing = async () => {
+    try {
+      const resp = await getMyGround(token);
+      const ground = resp?.ground || resp?.data?.ground;
+      if (ground) {
+        setGroundId(ground._id);
+        const p = ground.pricing || {};
+        if (p.weekdayMorning) setWeekdayMorning(String(p.weekdayMorning));
+        if (p.weekdayAfternoon) setWeekdayAfternoon(String(p.weekdayAfternoon));
+        if (p.weekdayEvening) setWeekdayEvening(String(p.weekdayEvening));
+        if (p.weekendMorning) setWeekendMorning(String(p.weekendMorning));
+        if (p.weekendAfternoon) setWeekendAfternoon(String(p.weekendAfternoon));
+        if (p.weekendEvening) setWeekendEvening(String(p.weekendEvening));
+        if (p.floodlightCharge) setFloodlightCharge(String(p.floodlightCharge));
+        if (p.equipmentCharge) setEquipmentCharge(String(p.equipmentCharge));
+        if (p.scorerCharge) setScorerCharge(String(p.scorerCharge));
+      }
+    } catch (e) {
+      // noop
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const pricing = {
+        weekdayMorning: parseFloat(weekdayMorning) || 0,
+        weekdayAfternoon: parseFloat(weekdayAfternoon) || 0,
+        weekdayEvening: parseFloat(weekdayEvening) || 0,
+        weekendMorning: parseFloat(weekendMorning) || 0,
+        weekendAfternoon: parseFloat(weekendAfternoon) || 0,
+        weekendEvening: parseFloat(weekendEvening) || 0,
+        floodlightCharge: parseFloat(floodlightCharge) || 0,
+        equipmentCharge: parseFloat(equipmentCharge) || 0,
+        scorerCharge: parseFloat(scorerCharge) || 0,
+      };
+
+      const payload = { pricing };
+      const resp = await saveGroundProfile(payload, token);
+      if (resp?.success) {
+        Alert.alert('Success', 'Pricing updated successfully!');
+        setIsEditing(false);
+      } else {
+        Alert.alert('Error', 'Failed to update pricing');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to update pricing');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const PriceCard = ({ title, icon, value, onChange, editable }) => (
@@ -46,6 +105,15 @@ export default function PriceScreen() {
     </View>
   );
 
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }] }>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={{ marginTop: 8, color: Colors.textSecondary }}>Loading pricing...</Text>
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container}>
       {/* Header */}
@@ -62,11 +130,18 @@ export default function PriceScreen() {
         ) : (
           <View style={styles.editActions}>
             <TouchableOpacity 
-              style={styles.saveButton}
+              style={[styles.saveButton, saving && styles.disabledButton]}
               onPress={handleSave}
+              disabled={saving}
             >
-              <Ionicons name="checkmark-circle" size={20} color={Colors.white} />
-              <Text style={styles.saveButtonText}>Save</Text>
+              {saving ? (
+                <ActivityIndicator size="small" color={Colors.white} />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle" size={20} color={Colors.white} />
+                  <Text style={styles.saveButtonText}>Save</Text>
+                </>
+              )}
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.cancelButton}

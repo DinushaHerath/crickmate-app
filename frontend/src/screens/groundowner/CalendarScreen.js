@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl, Linking } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
 import { Colors } from '../../../constants/theme';
-import { getBookingDates, getBookingsByDate } from '../../api/bookings';
+import { getBookingDates, getBookingsByDate, updateBookingStatus } from '../../api/bookings';
 
 export default function CalendarScreen({ navigation }) {
   const { token } = useSelector((state) => state.auth);
@@ -134,6 +134,7 @@ export default function CalendarScreen({ navigation }) {
   return (
     <ScrollView 
       style={styles.container}
+      contentContainerStyle={styles.contentContainer}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
       }
@@ -190,8 +191,10 @@ export default function CalendarScreen({ navigation }) {
                   <View style={styles.bookingInfo}>
                     <Text style={styles.customerName}>{booking.customerName}</Text>
                     <View style={styles.contactRow}>
-                      <Ionicons name="call-outline" size={14} color={Colors.textSecondary} />
-                      <Text style={styles.contactText}>{booking.mobile}</Text>
+                      <TouchableOpacity style={styles.callRow} onPress={() => Linking.openURL(`tel:${booking.mobile}`)}>
+                        <Ionicons name="call-outline" size={14} color={Colors.textSecondary} />
+                        <Text style={styles.contactText}>{booking.mobile}</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
                   <View style={[styles.statusBadge, { backgroundColor: getStatusBgColor(booking.status) }]}>
@@ -219,6 +222,57 @@ export default function CalendarScreen({ navigation }) {
                 {booking.notes && (
                   <Text style={styles.notesText}>Note: {booking.notes}</Text>
                 )}
+
+                <View style={styles.actionsRow}>
+                  {booking.status !== 'cancelled' && (
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.cancelButton]}
+                      onPress={() => {
+                        Alert.alert(
+                          'Cancel Booking',
+                          'Are you sure you want to cancel this booking?',
+                          [
+                            { text: 'No', style: 'cancel' },
+                            {
+                              text: 'Yes, Cancel',
+                              style: 'destructive',
+                              onPress: async () => {
+                                try {
+                                  await updateBookingStatus(booking._id, 'cancelled', token);
+                                  Alert.alert('Cancelled', 'Booking has been cancelled');
+                                  onRefresh();
+                                } catch (e) {
+                                  Alert.alert('Error', 'Failed to cancel booking');
+                                }
+                              }
+                            }
+                          ]
+                        );
+                      }}
+                    >
+                      <Ionicons name="close-circle" size={18} color={Colors.error} />
+                      <Text style={[styles.actionText, { color: Colors.error }]}>Cancel</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {booking.status !== 'completed' && booking.status !== 'cancelled' && Number(booking.paymentAmount) > 0 && (
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.completeButton]}
+                      onPress={async () => {
+                        try {
+                          await updateBookingStatus(booking._id, 'completed', token);
+                          Alert.alert('Completed', 'Booking marked as completed');
+                          onRefresh();
+                        } catch (e) {
+                          Alert.alert('Error', 'Failed to update booking');
+                        }
+                      }}
+                    >
+                      <Ionicons name="checkmark-circle" size={18} color={Colors.accent} />
+                      <Text style={[styles.actionText, { color: Colors.accent }]}>Mark Completed</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             ))
           ) : (
@@ -247,6 +301,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  contentContainer: {
+    paddingBottom: 24,
+  },
   centerContent: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -261,7 +318,8 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   addButtonContainer: {
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: Colors.white,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
@@ -281,7 +339,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   bookingsSection: {
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   sectionTitle: {
     fontSize: 18,
@@ -371,8 +430,39 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 40,
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: Colors.cardBackground,
+  },
+  cancelButton: {
+    backgroundColor: Colors.cardBackground,
+  },
+  completeButton: {
+    backgroundColor: Colors.cardBackground,
+  },
+  actionText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  callRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   emptyText: {
     fontSize: 16,

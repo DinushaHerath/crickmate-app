@@ -1,65 +1,58 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Linking, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/theme';
+import { useSelector } from 'react-redux';
+import { getGroundBookings, updateBookingStatus, editBooking } from '../../api/bookings';
+import { getMyGround } from '../../api/grounds';
 
 export default function BookingsScreen() {
+  const { token } = useSelector((state) => state.auth);
   const [filterStatus, setFilterStatus] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [groundId, setGroundId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [bookings, setBookings] = useState([]);
+  const [detailsModal, setDetailsModal] = useState({ visible: false });
+  const [editModal, setEditModal] = useState({ visible: false });
 
-  const bookings = [
-    {
-      id: '1',
-      person: 'Kamal Perera',
-      date: '2025-11-25',
-      time: '09:00 AM - 12:00 PM',
-      status: 'Confirmed',
-      amount: 8000,
-      contact: '0771234567'
-    },
-    {
-      id: '2',
-      person: 'Nimal Silva',
-      date: '2025-11-25',
-      time: '02:00 PM - 05:00 PM',
-      status: 'Confirmed',
-      amount: 8000,
-      contact: '0712345678'
-    },
-    {
-      id: '3',
-      person: 'Sunil Fernando',
-      date: '2025-11-26',
-      time: '09:00 AM - 12:00 PM',
-      status: 'Pending',
-      amount: 8000,
-      contact: '0723456789'
-    },
-    {
-      id: '4',
-      person: 'Amal Jayasinghe',
-      date: '2025-11-26',
-      time: '06:00 PM - 09:00 PM',
-      status: 'Confirmed',
-      amount: 10000,
-      contact: '0734567890'
-    },
-    {
-      id: '5',
-      person: 'Tharindu Wickramasinghe',
-      date: '2025-11-27',
-      time: '09:00 AM - 12:00 PM',
-      status: 'Cancelled',
-      amount: 8000,
-      contact: '0745678901'
-    },
-  ];
+  useEffect(() => {
+    fetchGroundAndBookings();
+  }, []);
 
-  const filteredBookings = bookings.filter(booking => {
-    const matchesStatus = filterStatus === 'All' || booking.status === filterStatus;
-    const matchesSearch = booking.person.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesStatus && matchesSearch;
-  });
+  const fetchGroundAndBookings = async () => {
+    try {
+      setLoading(true);
+      const groundResp = await getMyGround(token);
+      const id = groundResp?.ground?._id || groundResp?.data?.ground?._id; // handle possible shapes
+      setGroundId(id);
+      if (id) {
+        const resp = await getGroundBookings(id, token);
+        const list = resp?.bookings || [];
+        setBookings(list);
+      }
+    } catch (e) {
+      setBookings([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchGroundAndBookings();
+  };
+
+  const filteredBookings = useMemo(() => {
+    return bookings.filter((b) => {
+      const stat = (b.status || '').toLowerCase();
+      const matchesStatus = filterStatus === 'All' || (stat.charAt(0).toUpperCase() + stat.slice(1)) === filterStatus;
+      const matchesSearch = (b.customerName || '').toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesStatus && matchesSearch;
+    });
+  }, [bookings, filterStatus, searchQuery]);
 
   const renderBooking = ({ item }) => (
     <View style={styles.bookingCard}>
@@ -68,29 +61,31 @@ export default function BookingsScreen() {
           <Ionicons name="person" size={28} color={Colors.primary} />
         </View>
         <View style={styles.bookingInfo}>
-          <Text style={styles.personName}>{item.person}</Text>
+          <Text style={styles.personName}>{item.customerName}</Text>
           <View style={styles.dateTimeRow}>
             <Ionicons name="calendar-outline" size={14} color={Colors.textSecondary} />
-            <Text style={styles.dateText}>{item.date}</Text>
+            <Text style={styles.dateText}>{new Date(item.bookingDate).toISOString().split('T')[0]}</Text>
           </View>
           <View style={styles.dateTimeRow}>
             <Ionicons name="time-outline" size={14} color={Colors.textSecondary} />
-            <Text style={styles.timeText}>{item.time}</Text>
+            <Text style={styles.timeText}>{`${item.timeSlot?.start} - ${item.timeSlot?.end}`}</Text>
           </View>
         </View>
         <View style={[
           styles.statusBadge,
-          item.status === 'Confirmed' && styles.statusConfirmed,
-          item.status === 'Pending' && styles.statusPending,
-          item.status === 'Cancelled' && styles.statusCancelled
+          (item.status || '').toLowerCase() === 'confirmed' && styles.statusConfirmed,
+          (item.status || '').toLowerCase() === 'pending' && styles.statusPending,
+          (item.status || '').toLowerCase() === 'cancelled' && styles.statusCancelled,
+          (item.status || '').toLowerCase() === 'completed' && styles.statusCompleted
         ]}>
           <Text style={[
             styles.statusText,
-            item.status === 'Confirmed' && styles.statusTextConfirmed,
-            item.status === 'Pending' && styles.statusTextPending,
-            item.status === 'Cancelled' && styles.statusTextCancelled
+            (item.status || '').toLowerCase() === 'confirmed' && styles.statusTextConfirmed,
+            (item.status || '').toLowerCase() === 'pending' && styles.statusTextPending,
+            (item.status || '').toLowerCase() === 'cancelled' && styles.statusTextCancelled,
+            (item.status || '').toLowerCase() === 'completed' && styles.statusTextCompleted
           ]}>
-            {item.status}
+            {(item.status || '').charAt(0).toUpperCase() + (item.status || '').slice(1)}
           </Text>
         </View>
       </View>
@@ -98,18 +93,28 @@ export default function BookingsScreen() {
       <View style={styles.bookingFooter}>
         <View style={styles.amountSection}>
           <Text style={styles.amountLabel}>Amount</Text>
-          <Text style={styles.amountValue}>LKR {item.amount.toLocaleString()}</Text>
+          <Text style={styles.amountValue}>LKR {Number(item.paymentAmount || 0).toLocaleString()}</Text>
         </View>
         <View style={styles.actionsSection}>
-          <TouchableOpacity style={styles.iconButton}>
+          <TouchableOpacity style={styles.iconButton} onPress={() => Linking.openURL(`tel:${item.mobile}`)}>
             <Ionicons name="call" size={20} color={Colors.primary} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="create" size={20} color={Colors.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
+          {item.status !== 'cancelled' && (
+            <TouchableOpacity style={styles.iconButton} onPress={() => setEditModal({ visible: true, booking: item })}>
+              <Ionicons name="create" size={20} color={Colors.primary} />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.iconButton} onPress={() => setDetailsModal({ visible: true, booking: item })}>
             <Ionicons name="ellipsis-vertical" size={20} color={Colors.textSecondary} />
           </TouchableOpacity>
+          {item.status !== 'cancelled' && (
+            <TouchableOpacity style={styles.iconButton} onPress={async () => {
+              await updateBookingStatus(item._id, 'cancelled', token);
+              onRefresh();
+            }}>
+              <Ionicons name="close" size={20} color={Colors.error} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </View>
@@ -153,18 +158,157 @@ export default function BookingsScreen() {
       </View>
 
       {/* Bookings List */}
-      <FlatList
-        data={filteredBookings}
-        renderItem={renderBooking}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="calendar-outline" size={80} color={Colors.textLight} />
-            <Text style={styles.emptyText}>No bookings found</Text>
+      {loading ? (
+        <View style={styles.emptyContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredBookings}
+          renderItem={renderBooking}
+          keyExtractor={(item) => item._id}
+          contentContainerStyle={styles.listContainer}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="calendar-outline" size={80} color={Colors.textLight} />
+              <Text style={styles.emptyText}>No bookings found</Text>
+            </View>
+          }
+        />
+      )}
+
+      {/* Details Modal */}
+      <Modal visible={detailsModal.visible} transparent animationType="slide" onRequestClose={() => setDetailsModal({ visible: false })}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Booking Details</Text>
+            {detailsModal.booking && (
+              <View style={{ gap: 8 }}>
+                <Text>Name: {detailsModal.booking.customerName}</Text>
+                <Text>Mobile: {detailsModal.booking.mobile}</Text>
+                <Text>Date: {new Date(detailsModal.booking.bookingDate).toLocaleDateString()}</Text>
+                <Text>Time: {detailsModal.booking.timeSlot?.start} - {detailsModal.booking.timeSlot?.end}</Text>
+                <Text>Amount: LKR {Number(detailsModal.booking.paymentAmount || 0).toLocaleString()}</Text>
+                <Text>Status: {(detailsModal.booking.status || '').charAt(0).toUpperCase() + (detailsModal.booking.status || '').slice(1)}</Text>
+                {detailsModal.booking.notes ? <Text>Notes: {detailsModal.booking.notes}</Text> : null}
+              </View>
+            )}
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 16 }}>
+              <TouchableOpacity style={styles.modalButton} onPress={() => setDetailsModal({ visible: false })}>
+                <Text style={styles.modalButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        }
-      />
+        </View>
+      </Modal>
+
+      {/* Edit/Reschedule Modal */}
+      <Modal visible={editModal.visible} transparent animationType="slide" onRequestClose={() => setEditModal({ visible: false })}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Edit / Reschedule Booking</Text>
+            {editModal.booking && (
+              <View style={{ gap: 10 }}>
+                <Text style={styles.modalLabel}>Customer Name</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  defaultValue={String(editModal.booking.customerName || '')}
+                  onChangeText={(val) => (editModal.booking.customerName = val)}
+                />
+                <Text style={styles.modalLabel}>Mobile Number</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  keyboardType="phone-pad"
+                  defaultValue={String(editModal.booking.mobile || '')}
+                  onChangeText={(val) => (editModal.booking.mobile = val)}
+                />
+                <Text style={styles.modalLabel}>Booking Date (YYYY-MM-DD)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  defaultValue={new Date(editModal.booking.bookingDate).toISOString().split('T')[0]}
+                  onChangeText={(val) => {
+                    // naive validation; backend will parse
+                    editModal.booking.bookingDate = val;
+                  }}
+                />
+                <Text style={styles.modalLabel}>Start Time (HH:mm)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  defaultValue={String(editModal.booking.timeSlot?.start || '')}
+                  onChangeText={(val) => {
+                    editModal.booking.timeSlot = { ...(editModal.booking.timeSlot || {}), start: val };
+                  }}
+                />
+                <Text style={styles.modalLabel}>End Time (HH:mm)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  defaultValue={String(editModal.booking.timeSlot?.end || '')}
+                  onChangeText={(val) => {
+                    editModal.booking.timeSlot = { ...(editModal.booking.timeSlot || {}), end: val };
+                  }}
+                />
+                <Text style={styles.modalLabel}>Payment Amount (LKR)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  keyboardType="decimal-pad"
+                  defaultValue={String(editModal.booking.paymentAmount || '')}
+                  onChangeText={(val) => (editModal.booking.paymentAmount = Number(val) || 0)}
+                />
+                <Text style={styles.modalLabel}>Notes</Text>
+                <TextInput
+                  style={[styles.modalInput, { height: 80 }]} multiline
+                  defaultValue={editModal.booking.notes || ''}
+                  onChangeText={(val) => (editModal.booking.notes = val)}
+                />
+              </View>
+            )}
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 16 }}>
+              <TouchableOpacity style={styles.modalButton} onPress={() => setEditModal({ visible: false })}>
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: Colors.primary }]}
+                onPress={async () => {
+                  if (!editModal.booking) return;
+                  const updates = {
+                    customerName: editModal.booking.customerName,
+                    mobile: editModal.booking.mobile,
+                    bookingDate: editModal.booking.bookingDate,
+                    timeSlot: editModal.booking.timeSlot,
+                    paymentAmount: editModal.booking.paymentAmount,
+                    notes: editModal.booking.notes,
+                  };
+                  await editBooking(editModal.booking._id, updates, token);
+                  setEditModal({ visible: false });
+                  onRefresh();
+                }}
+              >
+                <Text style={[styles.modalButtonText, { color: Colors.white }]}>Save</Text>
+              </TouchableOpacity>
+              {editModal.booking?.status === 'cancelled' && (
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: Colors.secondary }]}
+                  onPress={async () => {
+                    if (!editModal.booking) return;
+                    const updates = {
+                      status: 'pending',
+                      bookingDate: editModal.booking.bookingDate,
+                      timeSlot: editModal.booking.timeSlot,
+                    };
+                    await editBooking(editModal.booking._id, updates, token);
+                    setEditModal({ visible: false });
+                    onRefresh();
+                  }}
+                >
+                  <Text style={[styles.modalButtonText, { color: Colors.white }]}>Reschedule</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -286,6 +430,9 @@ const styles = StyleSheet.create({
   statusCancelled: {
     backgroundColor: Colors.error + '20',
   },
+  statusCompleted: {
+    backgroundColor: Colors.textSecondary + '20',
+  },
   statusText: {
     fontSize: 11,
     fontWeight: '600',
@@ -298,6 +445,9 @@ const styles = StyleSheet.create({
   },
   statusTextCancelled: {
     color: Colors.error,
+  },
+  statusTextCompleted: {
+    color: Colors.textSecondary,
   },
   bookingFooter: {
     flexDirection: 'row',
@@ -339,5 +489,49 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.textLight,
     marginTop: 15,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: 12,
+  },
+  modalLabel: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    color: Colors.textPrimary,
+    backgroundColor: Colors.cardBackground,
+  },
+  modalButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: Colors.cardBackground,
+  },
+  modalButtonText: {
+    color: Colors.textPrimary,
+    fontWeight: '600',
   },
 });
