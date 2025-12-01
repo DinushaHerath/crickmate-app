@@ -35,16 +35,10 @@ const bookingSchema = new mongoose.Schema({
     min: 0
   },
   
-  // Time slot
+  // Time slot - can be either string (Morning/Afternoon/Evening) or object with start/end times
   timeSlot: {
-    start: {
-      type: String, // Format: "HH:mm" (e.g., "09:00")
-      required: true
-    },
-    end: {
-      type: String, // Format: "HH:mm" (e.g., "12:00")
-      required: true
-    }
+    type: mongoose.Schema.Types.Mixed,
+    required: true
   },
   
   // Booking date
@@ -64,6 +58,19 @@ const bookingSchema = new mongoose.Schema({
   notes: {
     type: String,
     trim: true
+  },
+  
+  // Booked by: owner or player
+  bookedBy: {
+    type: String,
+    enum: ['owner', 'player'],
+    required: true
+  },
+  
+  // Player ID (if booked by player)
+  playerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   }
   
 }, { timestamps: true });

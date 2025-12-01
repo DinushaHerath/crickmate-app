@@ -133,37 +133,68 @@ router.get('/search', async (req, res) => {
   try {
     const { district, village, pitchType, search } = req.query;
 
-    console.log('Searching grounds:', { district, village, pitchType, search });
+    console.log('Searching grounds with filters:', { district, village, pitchType, search });
 
-    let query = { verified: true };
+    // First, get all grounds
+    const grounds = await Ground.find({})
+      .populate('ownerId', 'fullname email district village')
+      .select('-bookings')
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    console.log(`Total grounds in database: ${grounds.length}`);
+
+    // Filter based on criteria (use ground's district/village or owner's district/village)
+    let filteredGrounds = grounds;
 
     if (district) {
-      query.district = new RegExp(district, 'i');
+      const districtRegex = new RegExp(district, 'i');
+      filteredGrounds = filteredGrounds.filter(ground => 
+        districtRegex.test(ground.district) || 
+        (ground.ownerId && districtRegex.test(ground.ownerId.district))
+      );
+      console.log(`After district filter (${district}): ${filteredGrounds.length} grounds`);
     }
 
     if (village) {
-      query.village = new RegExp(village, 'i');
+      const villageRegex = new RegExp(village, 'i');
+      filteredGrounds = filteredGrounds.filter(ground => 
+        villageRegex.test(ground.village) || 
+        (ground.ownerId && villageRegex.test(ground.ownerId.village))
+      );
+      console.log(`After village filter (${village}): ${filteredGrounds.length} grounds`);
     }
 
     if (pitchType) {
-      query.pitchType = pitchType;
+      filteredGrounds = filteredGrounds.filter(ground => ground.pitchType === pitchType);
+      console.log(`After pitch type filter (${pitchType}): ${filteredGrounds.length} grounds`);
     }
 
     if (search) {
-      query.$text = { $search: search };
+      const searchRegex = new RegExp(search, 'i');
+      filteredGrounds = filteredGrounds.filter(ground => 
+        searchRegex.test(ground.groundName)
+      );
+      console.log(`After search filter (${search}): ${filteredGrounds.length} grounds`);
     }
 
-    const grounds = await Ground.find(query)
-      .populate('ownerId', 'fullname email')
-      .select('-bookings')
-      .sort({ 'rating.average': -1, createdAt: -1 })
-      .limit(50);
+    // Enhance grounds with owner district/village if not set
+    const enhancedGrounds = filteredGrounds.map(ground => {
+      const groundObj = ground.toObject();
+      if (!groundObj.district && ground.ownerId) {
+        groundObj.district = ground.ownerId.district;
+      }
+      if (!groundObj.village && ground.ownerId) {
+        groundObj.village = ground.ownerId.village;
+      }
+      return groundObj;
+    });
 
-    console.log(`Found ${grounds.length} grounds`);
+    console.log(`Returning ${enhancedGrounds.length} grounds`);
 
     res.json({
       success: true,
-      grounds
+      grounds: enhancedGrounds
     });
 
   } catch (error) {
@@ -182,7 +213,7 @@ router.get('/:groundId', async (req, res) => {
     const { groundId } = req.params;
 
     const ground = await Ground.findById(groundId)
-      .populate('ownerId', 'fullname email contact');
+      .populate('ownerId', 'fullname email district village contact');
 
     if (!ground) {
       return res.status(404).json({ 
@@ -191,9 +222,18 @@ router.get('/:groundId', async (req, res) => {
       });
     }
 
+    // Enhance ground with owner district/village if not set
+    const groundObj = ground.toObject();
+    if (!groundObj.district && ground.ownerId) {
+      groundObj.district = ground.ownerId.district;
+    }
+    if (!groundObj.village && ground.ownerId) {
+      groundObj.village = ground.ownerId.village;
+    }
+
     res.json({
       success: true,
-      ground
+      ground: groundObj
     });
 
   } catch (error) {

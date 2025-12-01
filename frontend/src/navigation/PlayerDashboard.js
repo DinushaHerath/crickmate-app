@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/theme';
 import HomeStack from './HomeStack';
 import MatchesStack from './MatchesStack';
-import GroundsScreen from '../screens/GroundsScreen';
+import GroundsStack from './GroundsStack';
 import TeamScreen from '../screens/TeamScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
@@ -50,8 +50,9 @@ export default function PlayerDashboard() {
       />
       <Tab.Screen 
         name="Grounds" 
-        component={GroundsScreen}
+        component={GroundsStack}
         options={{
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="location" size={size} color={color} />
           ),

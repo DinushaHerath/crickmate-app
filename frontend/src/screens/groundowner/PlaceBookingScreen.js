@@ -108,7 +108,7 @@ export default function PlaceBookingScreen({ route, navigation }) {
       return false;
     }
     
-    if (!paymentAmount.trim() || isNaN(paymentAmount) || parseFloat(paymentAmount) <= 0) {
+    if (paymentAmount.trim() && (isNaN(paymentAmount) || parseFloat(paymentAmount) < 0)) {
       Alert.alert('Validation Error', 'Please enter a valid payment amount');
       return false;
     }
@@ -131,7 +131,7 @@ export default function PlaceBookingScreen({ route, navigation }) {
         groundId,
         customerName: customerName.trim(),
         mobile: mobile.trim(),
-        paymentAmount: parseFloat(paymentAmount),
+        paymentAmount: paymentAmount.trim() ? parseFloat(paymentAmount) : 0,
         timeSlot: {
           start: formatTime(startTime),
           end: formatTime(endTime)
@@ -268,7 +268,7 @@ export default function PlaceBookingScreen({ route, navigation }) {
         )}
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Payment Amount (LKR) *</Text>
+          <Text style={styles.label}>Payment Amount (LKR) <Text style={styles.optionalText}>(Optional)</Text></Text>
           <View style={styles.inputWrapper}>
             <Ionicons name="cash-outline" size={20} color={Colors.accent} />
             <TextInput
@@ -382,6 +382,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.textPrimary,
     marginBottom: 8,
+  },
+  optionalText: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: Colors.textSecondary,
+    fontStyle: 'italic',
   },
   inputWrapper: {
     flexDirection: 'row',

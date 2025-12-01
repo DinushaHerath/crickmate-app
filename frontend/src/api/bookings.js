@@ -77,6 +77,19 @@ export const getBookingDates = async (token) => {
   }
 };
 
+// Get booking dates for a specific ground (public - for players)
+export const getGroundBookingDates = async (groundId) => {
+  try {
+    const response = await axiosInstance.get(
+      `${BOOKINGS_API_URL}/dates/${groundId}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching ground booking dates:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
 // Confirm booking
 export const confirmBooking = async (bookingId, token) => {
   try {
@@ -150,6 +163,62 @@ export const editBooking = async (bookingId, updates, token) => {
     return response.data;
   } catch (error) {
     console.error('Error editing booking:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// Get player's bookings
+export const getMyBookings = async (token) => {
+  try {
+    const response = await axiosInstance.get(
+      `${BOOKINGS_API_URL}/my-bookings`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching my bookings:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// Player pays and confirms their booking
+export const payAndConfirmBooking = async (bookingId, amount, token) => {
+  try {
+    const response = await axiosInstance.put(
+      `${BOOKINGS_API_URL}/${bookingId}/pay-confirm`,
+      { paymentAmount: amount },
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error pay-confirm booking:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+export const cancelMyBooking = async (bookingId, token) => {
+  try {
+    const response = await axiosInstance.put(
+      `${BOOKINGS_API_URL}/${bookingId}/cancel`,
+      {},
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error cancelling booking:', error.response?.data || error.message);
     throw error;
   }
 };
