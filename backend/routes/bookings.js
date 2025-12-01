@@ -7,44 +7,57 @@ const auth = require('../middleware/auth');
 // Create a new booking
 router.post('/create', auth, async (req, res) => {
   try {
-    const { groundId, customerName, mobile, paymentAmount, timeSlot, bookingDate, notes } = req.body;
+    const { groundId, customerName, mobile, paymentAmount, timeSlot, bookingDate, notes, customerContact } = req.body;
     
     console.log('Creating booking with data:', req.body);
     
-    // Validate required fields
-    if (!groundId || !customerName || !mobile || !paymentAmount || !timeSlot || !bookingDate) {
+    // Validate required fields (payment is optional)
+    if (!groundId || !customerName || !timeSlot || !bookingDate) {
       return res.status(400).json({ 
         success: false, 
         message: 'Missing required fields' 
       });
     }
     
-    // Verify ground belongs to the user
-    const ground = await Ground.findOne({ _id: groundId, ownerId: req.user.id });
-    if (!ground) {
-      return res.status(403).json({ 
+    const contactNumber = mobile || customerContact;
+    if (!contactNumber) {
+      return res.status(400).json({ 
         success: false, 
-        message: 'Ground not found or unauthorized' 
+        message: 'Contact number is required' 
       });
     }
     
+    // Find the ground
+    const ground = await Ground.findById(groundId);
+    if (!ground) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Ground not found' 
+      });
+    }
+    
+    // Determine if booking is by owner or player
+    const isOwner = ground.ownerId.toString() === req.user.id;
+    
     // Create booking
-    const initialStatus = Number(paymentAmount) > 0 ? 'completed' : 'pending';
+    const initialStatus = Number(paymentAmount) > 0 ? 'confirmed' : 'pending';
     const booking = new Booking({
       groundId,
-      ownerId: req.user.id,
+      ownerId: ground.ownerId,
       customerName,
-      mobile,
-      paymentAmount,
+      mobile: contactNumber,
+      paymentAmount: Number(paymentAmount) || 0,
       timeSlot,
       bookingDate: new Date(bookingDate),
       status: initialStatus,
-      notes
+      notes,
+      bookedBy: isOwner ? 'owner' : 'player',
+      playerId: isOwner ? null : req.user.id
     });
     
     await booking.save();
     
-    console.log('Booking created successfully:', booking._id);
+    console.log('Booking created successfully:', booking._id, 'by', booking.bookedBy);
     
     res.status(201).json({ 
       success: true, 
@@ -80,7 +93,7 @@ router.put('/:bookingId', auth, async (req, res) => {
     if (bookingDate !== undefined) booking.bookingDate = new Date(bookingDate);
     if (notes !== undefined) booking.notes = notes;
 
-    // Auto-status logic: if paymentAmount > 0 and not cancelled, set completed
+    // Auto-status logic: if paymentAmount > 0 and not cancelled, set confirmed
     if (status !== undefined) {
       if (!['pending', 'confirmed', 'cancelled', 'completed'].includes(status)) {
         return res.status(400).json({ success: false, message: 'Invalid status' });
@@ -88,7 +101,7 @@ router.put('/:bookingId', auth, async (req, res) => {
       booking.status = status;
     } else {
       if (Number(booking.paymentAmount) > 0 && booking.status !== 'cancelled') {
-        booking.status = 'completed';
+        booking.status = 'confirmed';
       } else if (!booking.paymentAmount || Number(booking.paymentAmount) === 0) {
         booking.status = 'pending';
       }
@@ -222,6 +235,41 @@ router.get('/dates', auth, async (req, res) => {
   }
 });
 
+// Get booking dates for a specific ground (public - for players)
+router.get('/dates/:groundId', async (req, res) => {
+  try {
+    const { groundId } = req.params;
+    
+    // Get all unique booking dates for this ground
+    const bookings = await Booking.find({ 
+      groundId: groundId,
+      status: { $ne: 'cancelled' }
+    }).select('bookingDate');
+    
+    // Format dates for calendar
+    const markedDates = {};
+    bookings.forEach(booking => {
+      const dateStr = booking.bookingDate.toISOString().split('T')[0];
+      markedDates[dateStr] = { marked: true, dotColor: '#4CAF50' };
+    });
+    
+    console.log(`Found ${Object.keys(markedDates).length} booking dates for ground ${groundId}`);
+    
+    res.json({ 
+      success: true, 
+      markedDates 
+    });
+    
+  } catch (error) {
+    console.error('Error fetching booking dates:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error', 
+      error: error.message 
+    });
+  }
+});
+
 // Confirm booking
 router.put('/:bookingId/confirm', auth, async (req, res) => {
   try {
@@ -257,6 +305,50 @@ router.put('/:bookingId/confirm', auth, async (req, res) => {
       message: 'Server error', 
       error: error.message 
     });
+  }
+});
+
+// Player: pay and confirm own booking
+router.put('/:bookingId/pay-confirm', auth, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { paymentAmount } = req.body;
+
+    const booking = await Booking.findOne({ _id: bookingId, playerId: req.user.id });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found or unauthorized' });
+    }
+
+    const amt = Number(paymentAmount) || 0;
+    if (amt <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid payment amount' });
+    }
+
+    booking.paymentAmount = amt;
+    booking.status = 'confirmed';
+    await booking.save();
+
+    res.json({ success: true, message: 'Payment saved and booking confirmed', booking });
+  } catch (error) {
+    console.error('Error pay-confirm booking:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// Player: cancel own booking
+router.put('/:bookingId/cancel', auth, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const booking = await Booking.findOne({ _id: bookingId, playerId: req.user.id });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found or unauthorized' });
+    }
+    booking.status = 'cancelled';
+    await booking.save();
+    res.json({ success: true, message: 'Booking cancelled', booking });
+  } catch (error) {
+    console.error('Error cancelling booking:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 });
 
@@ -332,6 +424,72 @@ router.delete('/:bookingId', auth, async (req, res) => {
     
   } catch (error) {
     console.error('Error deleting booking:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error', 
+      error: error.message 
+    });
+  }
+});
+
+// Get bookings for a specific ground and date (public - for showing available time slots)
+router.get('/ground/:groundId/date/:date', async (req, res) => {
+  try {
+    const { groundId, date } = req.params;
+    
+    // Parse date
+    const bookingDate = new Date(date);
+    const nextDay = new Date(bookingDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    
+    // Get bookings for that day
+    const bookings = await Booking.find({
+      groundId: groundId,
+      bookingDate: {
+        $gte: bookingDate,
+        $lt: nextDay
+      },
+      status: { $ne: 'cancelled' }
+    }).select('timeSlot status bookedBy');
+    
+    console.log(`Found ${bookings.length} bookings for ground ${groundId} on ${date}`);
+    if (bookings.length > 0) {
+      console.log('Sample booking timeSlot:', bookings[0].timeSlot, 'Type:', typeof bookings[0].timeSlot);
+    }
+    
+    res.json({ 
+      success: true, 
+      bookings
+    });
+    
+  } catch (error) {
+    console.error('Error fetching ground bookings by date:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error', 
+      error: error.message 
+    });
+  }
+});
+
+// Get all bookings made by the logged-in player
+router.get('/my-bookings', auth, async (req, res) => {
+  try {
+    const bookings = await Booking.find({ 
+      playerId: req.user.id 
+    })
+    .populate('groundId', 'groundName address district village')
+    .sort({ bookingDate: -1 });
+    
+    console.log(`Found ${bookings.length} bookings for player ${req.user.id}`);
+    
+    res.json({ 
+      success: true, 
+      bookings 
+    });
+    
+  } catch (error) {
+    console.error('Error fetching player bookings:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Server error', 

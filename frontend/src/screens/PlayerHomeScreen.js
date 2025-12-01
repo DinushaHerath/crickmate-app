@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/theme';
 import { getHomeStats } from '../api/homeStats';
 import { getInvitations } from '../api/teams';
+import { getUpcomingMatches } from '../api/matches';
 import { MOCK_GROUNDS } from '../data/mockData';
 
 const { width } = Dimensions.get('window');
@@ -15,6 +16,7 @@ export default function PlayerHomeScreen({ navigation }) {
   
   const [homeData, setHomeData] = useState(null);
   const [invitationCount, setInvitationCount] = useState(0);
+  const [upcomingMatches, setUpcomingMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showGroundModal, setShowGroundModal] = useState(false);
@@ -22,13 +24,14 @@ export default function PlayerHomeScreen({ navigation }) {
 
   const fetchHomeData = async () => {
     try {
-      const [statsResponse, invitationsResponse] = await Promise.all([
+      const [statsResponse, invitationsResponse, matchesResponse] = await Promise.all([
         getHomeStats(token),
-        getInvitations('pending', token)
+        getInvitations('pending', token),
+        getUpcomingMatches(token)
       ]);
       
       console.log('Home Stats Response:', statsResponse);
-      console.log('Upcoming Matches:', statsResponse?.data?.upcomingMatches);
+      console.log('Matches Response:', matchesResponse);
       
       if (statsResponse.success) {
         setHomeData(statsResponse.data);
@@ -36,6 +39,16 @@ export default function PlayerHomeScreen({ navigation }) {
       
       if (invitationsResponse.success) {
         setInvitationCount(invitationsResponse.invitations?.length || 0);
+      }
+
+      // matchesResponse.data is the array directly
+      if (matchesResponse.data && Array.isArray(matchesResponse.data)) {
+        const matches = matchesResponse.data;
+        setUpcomingMatches(matches.slice(0, 3)); // Show top 3
+        console.log('Upcoming matches set:', matches.length);
+      } else {
+        console.log('No matches or invalid response:', matchesResponse);
+        setUpcomingMatches([]);
       }
     } catch (error) {
       console.error('Error fetching home data:', error);
@@ -119,50 +132,53 @@ export default function PlayerHomeScreen({ navigation }) {
           </TouchableOpacity>
         </View>
         
-        {homeData?.upcomingMatches && homeData.upcomingMatches.length > 0 ? (
-          homeData.upcomingMatches.slice(0, 3).map((match) => (
-            <TouchableOpacity key={match.id} style={styles.matchCard}>
+        {upcomingMatches && upcomingMatches.length > 0 ? (
+          upcomingMatches.map((match) => (
+            <TouchableOpacity 
+              key={match._id} 
+              style={styles.matchCard}
+              onPress={() => navigation.navigate('Matches')}
+            >
               <View style={styles.matchHeader}>
                 <View style={styles.matchDateContainer}>
                   <Ionicons name="calendar-outline" size={14} color={Colors.textSecondary} />
-                  <Text style={styles.matchDate}>{match.date}</Text>
+                  <Text style={styles.matchDate}>
+                    {new Date(match.date).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </Text>
                 </View>
-                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                  {match.createdByUser && (
-                    <View style={styles.createdByBadge}>
-                      <Text style={styles.createdByText}>Created by you</Text>
-                    </View>
-                  )}
-                  <Text style={styles.matchType}>{match.type}</Text>
-                </View>
+                <Text style={styles.matchType}>{match.matchType || 'Friendly'}</Text>
               </View>
               <View style={styles.matchTeams}>
-                <Text style={styles.teamName}>{match.team1}</Text>
+                <Text style={styles.teamName}>{match.team1?.name || 'Team 1'}</Text>
                 <Text style={styles.vs}>VS</Text>
-                <Text style={styles.teamName}>{match.team2}</Text>
+                <Text style={styles.teamName}>{match.team2?.name || 'Team 2'}</Text>
               </View>
               <View style={styles.matchDetails}>
                 <View style={styles.matchInfoItem}>
                   <Ionicons name="time-outline" size={14} color={Colors.textSecondary} />
-                  <Text style={styles.matchInfo}>{match.time}</Text>
+                  <Text style={styles.matchInfo}>{match.time || '10:00 AM'}</Text>
                 </View>
                 <View style={styles.matchInfoItem}>
                   <Ionicons name="location-outline" size={14} color={Colors.textSecondary} />
-                  <TouchableOpacity onPress={() => {
-                    const g = MOCK_GROUNDS.find(gr => gr.name === match.ground);
-                    setSelectedGround(g || { name: match.ground, district: match.groundDistrict });
-                    setShowGroundModal(true);
-                  }}>
-                    <Text style={[styles.matchInfo, {textDecorationLine:'underline'}]}>{match.ground}</Text>
-                  </TouchableOpacity>
+                  <Text style={styles.matchInfo}>{match.ground?.groundName || match.location || 'Ground'}</Text>
                 </View>
               </View>
             </TouchableOpacity>
           ))
         ) : (
-          <View style={styles.emptyState}>
-            <Ionicons name="calendar-outline" size={48} color={Colors.textSecondary} />
-            <Text style={styles.emptyText}>No upcoming matches</Text>
+          <View style={styles.emptyMatchesCard}>
+            <Ionicons name="calendar-outline" size={40} color={Colors.textLight} />
+            <Text style={styles.emptyMatchesText}>No upcoming matches</Text>
+            <TouchableOpacity 
+              style={styles.createMatchButton}
+              onPress={() => navigation.navigate('Matches')}
+            >
+              <Text style={styles.createMatchButtonText}>View Matches</Text>
+            </TouchableOpacity>
           </View>
         )}
       </View>

@@ -54,6 +54,31 @@ export default function BookingsScreen() {
     });
   }, [bookings, filterStatus, searchQuery]);
 
+  const formatTo12h = (time24) => {
+    if (!time24 || typeof time24 !== 'string' || !time24.includes(':')) return '';
+    const [hStr, mStr] = time24.split(':');
+    let h = parseInt(hStr, 10);
+    const m = parseInt(mStr, 10) || 0;
+    const mer = h >= 12 ? 'PM' : 'AM';
+    h = h % 12;
+    if (h === 0) h = 12;
+    return `${h}:${m.toString().padStart(2, '0')} ${mer}`;
+  };
+
+  const formatTimeSlot = (ts) => {
+    if (typeof ts === 'string') {
+      const match = ts.match(/^(\d{1,2}:\d{2})\s?-\s?(\d{1,2}:\d{2})$/);
+      if (match) {
+        return `${formatTo12h(match[1])} - ${formatTo12h(match[2])}`;
+      }
+      return ts;
+    }
+    if (ts && typeof ts === 'object' && ts.start && ts.end) {
+      return `${formatTo12h(ts.start)} - ${formatTo12h(ts.end)}`;
+    }
+    return '—';
+  };
+
   const renderBooking = ({ item }) => (
     <View style={styles.bookingCard}>
       <View style={styles.bookingHeader}>
@@ -62,13 +87,20 @@ export default function BookingsScreen() {
         </View>
         <View style={styles.bookingInfo}>
           <Text style={styles.personName}>{item.customerName}</Text>
+          {item.bookedBy && (
+            <View style={[styles.bookedByBadge, item.bookedBy === 'player' ? styles.bookedByPlayer : styles.bookedByOwner]}>
+              <Text style={styles.bookedByText}>
+                Booked by {item.bookedBy === 'player' ? 'Player' : 'Owner'}
+              </Text>
+            </View>
+          )}
           <View style={styles.dateTimeRow}>
             <Ionicons name="calendar-outline" size={14} color={Colors.textSecondary} />
             <Text style={styles.dateText}>{new Date(item.bookingDate).toISOString().split('T')[0]}</Text>
           </View>
           <View style={styles.dateTimeRow}>
             <Ionicons name="time-outline" size={14} color={Colors.textSecondary} />
-            <Text style={styles.timeText}>{`${item.timeSlot?.start} - ${item.timeSlot?.end}`}</Text>
+            <Text style={styles.timeText}>{formatTimeSlot(item.timeSlot)}</Text>
           </View>
         </View>
         <View style={[
@@ -117,6 +149,17 @@ export default function BookingsScreen() {
           )}
         </View>
       </View>
+
+      {/* Reschedule Button for Cancelled Bookings */}
+      {item.status === 'cancelled' && (
+        <TouchableOpacity 
+          style={styles.rescheduleButton}
+          onPress={() => setEditModal({ visible: true, booking: item })}
+        >
+          <Ionicons name="calendar-outline" size={18} color={Colors.white} />
+          <Text style={styles.rescheduleButtonText}>Reschedule</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -189,7 +232,13 @@ export default function BookingsScreen() {
                 <Text>Name: {detailsModal.booking.customerName}</Text>
                 <Text>Mobile: {detailsModal.booking.mobile}</Text>
                 <Text>Date: {new Date(detailsModal.booking.bookingDate).toLocaleDateString()}</Text>
-                <Text>Time: {detailsModal.booking.timeSlot?.start} - {detailsModal.booking.timeSlot?.end}</Text>
+                <Text>
+                  Time: {typeof detailsModal.booking.timeSlot === 'object' && detailsModal.booking.timeSlot
+                    ? `${formatTo12h(detailsModal.booking.timeSlot.start)} - ${formatTo12h(detailsModal.booking.timeSlot.end)}`
+                    : typeof detailsModal.booking.timeSlot === 'string'
+                    ? formatTimeSlot(detailsModal.booking.timeSlot)
+                    : '—'}
+                </Text>
                 <Text>Amount: LKR {Number(detailsModal.booking.paymentAmount || 0).toLocaleString()}</Text>
                 <Text>Status: {(detailsModal.booking.status || '').charAt(0).toUpperCase() + (detailsModal.booking.status || '').slice(1)}</Text>
                 {detailsModal.booking.notes ? <Text>Notes: {detailsModal.booking.notes}</Text> : null}
@@ -289,20 +338,24 @@ export default function BookingsScreen() {
               </TouchableOpacity>
               {editModal.booking?.status === 'cancelled' && (
                 <TouchableOpacity
-                  style={[styles.modalButton, { backgroundColor: Colors.secondary }]}
+                  style={[styles.modalButton, { backgroundColor: Colors.accent }]}
                   onPress={async () => {
                     if (!editModal.booking) return;
                     const updates = {
                       status: 'pending',
+                      customerName: editModal.booking.customerName,
+                      mobile: editModal.booking.mobile,
                       bookingDate: editModal.booking.bookingDate,
                       timeSlot: editModal.booking.timeSlot,
+                      paymentAmount: editModal.booking.paymentAmount,
+                      notes: editModal.booking.notes,
                     };
                     await editBooking(editModal.booking._id, updates, token);
                     setEditModal({ visible: false });
                     onRefresh();
                   }}
                 >
-                  <Text style={[styles.modalButtonText, { color: Colors.white }]}>Reschedule</Text>
+                  <Text style={[styles.modalButtonText, { color: Colors.white }]}>Reschedule & Activate</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -395,10 +448,28 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   personName: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
     color: Colors.textPrimary,
-    marginBottom: 6,
+    marginBottom: 4,
+  },
+  bookedByBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginBottom: 4,
+  },
+  bookedByPlayer: {
+    backgroundColor: Colors.primary + '20',
+  },
+  bookedByOwner: {
+    backgroundColor: Colors.accent + '20',
+  },
+  bookedByText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.primary,
   },
   dateTimeRow: {
     flexDirection: 'row',
@@ -479,6 +550,21 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.cardBackground,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  rescheduleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingVertical: 10,
+    backgroundColor: Colors.accent,
+    borderRadius: 8,
+  },
+  rescheduleButtonText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '600',
   },
   emptyContainer: {
     alignItems: 'center',

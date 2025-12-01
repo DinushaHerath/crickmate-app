@@ -158,9 +158,9 @@ export default function CalendarScreen({ navigation }) {
           textDayFontWeight: '500',
           textMonthFontWeight: 'bold',
           textDayHeaderFontWeight: '600',
-          textDayFontSize: 15,
-          textMonthFontSize: 18,
-          textDayHeaderFontSize: 13
+          textDayFontSize: 14,
+          textMonthFontSize: 16,
+          textDayHeaderFontSize: 12
         }}
         markingType={'dot'}
         style={styles.calendar}
@@ -329,13 +329,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.primary,
-    paddingVertical: 15,
-    borderRadius: 12,
-    gap: 10,
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 8,
   },
   addBookingText: {
     color: Colors.white,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
   },
   bookingsSection: {
@@ -343,10 +343,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: Colors.textPrimary,
-    marginBottom: 15,
+    marginBottom: 12,
   },
   loadingContainer: {
     padding: 20,
